@@ -59,12 +59,12 @@
         {
           "path": "registry/db/drizzle.config.ts",
           "type": "registry:file",
-          "target": "drizzle.config.ts"
+          "target": "~/drizzle.config.ts"
         },
         {
           "path": "registry/db/docker-compose.yml",
           "type": "registry:file",
-          "target": "docker-compose.yml"
+          "target": "~/docker-compose.yml"
         }
       ]
     },
@@ -115,12 +115,12 @@
         {
           "path": "registry/auth/playwright.config.ts",
           "type": "registry:file",
-          "target": "playwright.config.ts"
+          "target": "~/playwright.config.ts"
         },
         {
           "path": "registry/auth/sign-up.spec.ts",
           "type": "registry:file",
-          "target": "e2e/sign-up.spec.ts"
+          "target": "~/e2e/sign-up.spec.ts"
         }
       ]
     },
@@ -190,7 +190,7 @@
         {
           "path": "registry/tests/vitest.config.mts",
           "type": "registry:file",
-          "target": "vitest.config.mts"
+          "target": "~/vitest.config.mts"
         }
       ]
     }
