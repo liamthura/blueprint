@@ -21,19 +21,23 @@ export function AuthForm({ mode }: { mode: "sign-in" | "sign-up" }) {
     const email = String(form.get("email"));
     const password = String(form.get("password"));
 
-    const result =
-      mode === "sign-up"
-        ? await signUp.email({ email, password, name: String(form.get("name")) })
-        : await signIn.email({ email, password });
+    try {
+      const result =
+        mode === "sign-up"
+          ? await signUp.email({ email, password, name: String(form.get("name")) })
+          : await signIn.email({ email, password });
 
-    setPending(false);
-
-    if (result.error) {
-      setError(result.error.message ?? "Something went wrong.");
-      return;
+      if (result.error) {
+        setError(result.error.message ?? "Something went wrong.");
+        return;
+      }
+      router.push("/");
+      router.refresh();
+    } catch {
+      setError("Something went wrong. Check your connection and try again.");
+    } finally {
+      setPending(false);
     }
-    router.push("/");
-    router.refresh();
   }
 
   return (
