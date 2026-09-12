@@ -144,7 +144,7 @@ carries its own copy. Its source of truth is this repository; apps receive it
 at `degit` time and do not update it afterwards.
 
 The repository deploys to Vercel. The deployment is simultaneously the
-component gallery and the registry host — `blueprint.<domain>/r/{name}.json`.
+component gallery and the registry host, at whatever URL it is deployed to.
 No separate infrastructure.
 
 ### The template
@@ -213,14 +213,36 @@ Three independent levels, chosen per project:
 Opting in is one command:
 
 ```bash
-pnpm dlx shadcn@latest registry add @blueprint=https://blueprint.<domain>/r/{name}.json
+pnpm dlx shadcn@latest registry add @blueprint=<registry-url>/r/{name}.json
 ```
 
 Capability items use **absolute URLs in `registryDependencies`**, not
 namespaced names. `shadcn add <url>` then resolves with nothing configured, so
-the growth path does not depend on the optional component registry. Cost: the
-registry hostname is baked into published JSON and must be chosen before first
-publish; changing it later requires a rebuild, which CI performs on every push.
+the growth path does not depend on the optional component registry.
+
+### Hostname is stamped at build, not written by hand
+
+Absolute URLs would normally bake the hostname into published JSON. Instead,
+source items carry the sentinel `{{REGISTRY_URL}}`, and the build stamps it:
+
+```
+shadcn build && node scripts/stamp-urls.mjs
+```
+
+`stamp-urls.mjs` rewrites the sentinel across `public/r/*.json`. It resolves
+the value in this order:
+
+1. `REGISTRY_URL` environment variable, if set
+2. `VERCEL_PROJECT_PRODUCTION_URL`, which Vercel provides at build time
+3. `http://localhost:3000` for local development
+
+So the registry **stamps itself with wherever it is deployed**. No hostname is
+configured anywhere by default, moving to a custom domain is a redeploy, and
+moving off Vercel entirely is one environment variable. Roughly fifteen lines.
+
+Generated apps resolve the same value from a `blueprint.registry` field in
+their own `package.json`, written once by `blueprint init`. An app that needs
+to point somewhere else edits one field.
 
 ### The `blueprint` script
 
@@ -287,6 +309,11 @@ second-customisation rule, which keeps the owned surface small.
 currently says. A broken `button` reaches the next `add` in any project. CI on
 this repository is the only control.
 
+**Sentinel stamping is a build step that can be skipped.** If `shadcn build`
+runs without `stamp-urls.mjs`, published items contain a literal
+`{{REGISTRY_URL}}` and fail for every consumer. CI runs them as one command and
+fails on an uncommitted `public/r/` diff, which catches it.
+
 **Drizzle's stable line is stale.** `latest` has not moved since March 2026
 while v1 sits in RC. If v1 ships with breaking changes, migration cost lands on
 every project carrying the `db` capability.
@@ -305,15 +332,14 @@ Vercel and Cloudflare — cheap to reverse.
 
 ## Decisions needed before implementation
 
-**Registry hostname.** `blueprint.<domain>` is a parameter throughout this
-spec, and it must be resolved before the first `shadcn build` is published,
-because capability items bake absolute URLs into `registryDependencies`.
-Changing it later means rebuilding and republishing every item. Options: a
-subdomain of a domain already owned, or the default `*.vercel.app` deployment
-URL (which is free but awkward to move off later).
+None blocking. Both items previously listed here — the registry hostname and
+the repository name — turned out to be soft:
 
-**GitHub repository owner/name** for the `degit` path, currently written as
-`khantthura/project-blueprint`.
+- **Hostname** resolves itself at build time (see "Hostname is stamped at
+  build"). Deploy first, pick a domain whenever.
+- **Repository owner/name** appears only in the `degit` command in the README.
+  It is not baked into any published artifact, so renaming the repository
+  breaks nothing that already exists.
 
 ## Deferred
 
