@@ -33,8 +33,11 @@ and loses it by month six, because a fix made in app #4 never reaches apps
 
 - A monorepo. Research is consistent that Turborepo overhead is unjustified for
   single-app, solo work, and code sharing is handled by the registry instead.
-- A published `create-blueprint` npm package. `degit` plus one script needs no
-  release pipeline. Revisit if scaffolding frequency justifies it.
+- A **published** `create-blueprint` npm package. There is a one-command CLI (see
+  "One command to start a project"), but it runs straight from the GitHub repo via
+  `npx github:…`, which needs no npm account, no versioning and no release pipeline.
+  Publishing turns the invocation into `npm create blueprint@latest`, which is nicer
+  to type and a release obligation forever. It waits until the URL actually annoys.
 - Supporting every project shape with a bespoke preset. See "Capabilities, not
   project types".
 
@@ -306,20 +309,53 @@ Generated apps store their registry URL in a `blueprint.registry` field in
 their own `package.json`, written once by `blueprint init`. An app that needs
 to point elsewhere edits one field.
 
-### The `blueprint` script
+### One command to start a project
+
+```bash
+npx github:<owner>/project-blueprint my-app
+```
+
+An earlier draft had the user run `degit`, then `pnpm install`, then register the
+registry namespace, then `shadcn add` each capability, then wire Drizzle's
+`package.json` scripts by hand. Five commands and two manual steps to start a project
+is the friction a boilerplate exists to remove, and the draft was wrong.
+
+npm can run a `bin` directly from a GitHub repository, so one command covers everything
+and the clone already contains `template/` — no separate `degit` step. The CLI:
+
+1. Takes the project name from argv, or prompts for it
+2. Asks what is being built — nothing (landing page), `saas` (db + auth + tables), or `ai`
+3. Asks whether to wire the `@blueprint` component registry
+4. Asks whether to keep the test harness (default yes; see "Testing must be opt-out")
+5. Copies `template/` into the target directory and sets the package name
+6. Runs `shadcn add` for the chosen capabilities
+7. Merges the `package.json` scripts those capabilities need
+8. Runs `pnpm install` and prints the next steps
+
+**This requires a minimal root `package.json`** — `name`, `bin`, no dependencies. That is
+a deliberate exception to the "no config at the repository root" rule, and it is safe:
+only `pnpm-workspace.yaml` creates a workspace, and only a root `biome.json` triggers the
+nested-configuration failure that forced the `site/` layout. A bin-only manifest does
+neither. The rule stands for those two files.
+
+**Unverified until the repository is pushed:** that `npx github:<owner>/<repo>` resolves
+the bin correctly for this layout. It is standard npm behaviour, but it has not been run
+against a real remote, and the first person to try it should confirm rather than assume.
+
+### The in-project `blueprint` script
 
 `scripts/blueprint.mjs`, exposed as `pnpm blueprint`. Zero dependencies —
 `node:readline/promises`, `node:child_process`, `node:fs`. Roughly 100 lines.
 
 ```bash
-pnpm blueprint init        # name, registry choice, optional bundle
 pnpm blueprint add auth    # month 6
 pnpm blueprint add ai      # month 9
 ```
 
-`init` is `add` with a name prompt in front; there are no modes. Each `add`
-resolves the capability URL, shells out to `shadcn add`, and merges the
-capability's required `package.json` scripts.
+There is no `init` subcommand — the one-command CLI above covers project creation. This
+script exists for the case that actually recurs: adding a capability to a project that
+already exists. Each `add` resolves the capability URL, shells out to `shadcn add`, and
+merges the capability's required `package.json` scripts.
 
 **The script does not delete itself.** Adding a capability mid-project is the
 common case, not the exception.
