@@ -261,7 +261,7 @@ export const CAPABILITIES = {
     title: "Streaming chat",
     needs: [],
     scripts: {},
-    env: ["OPENAI_API_KEY="],
+    env: ["OPENAI_API_KEY=", "OPENAI_MODEL=gpt-4o-mini"],
   },
   tables: {
     title: "Sortable data tables",
@@ -1081,7 +1081,6 @@ export function Chat() {
         "@t3-oss/env-nextjs@0.13.11",
         "zod@4.6.2"
       ],
-      "registryDependencies": ["button", "input"],
       "files": [
         { "path": "registry/ai/ai-env.ts", "type": "registry:lib", "target": "src/lib/ai-env.ts" },
         { "path": "registry/ai/route.ts", "type": "registry:file", "target": "src/app/api/chat/route.ts" },
@@ -1090,7 +1089,7 @@ export function Chat() {
     }
 ```
 
-`registryDependencies: ["button", "input"]` is correct and is **not** a violation of the constraint: `button` and `input` are shadcn component names, resolved by shadcn itself, and the Phase 2 route handler rewrites `button` to an absolute URL because it is one of this registry's own items. The constraint forbids naming *capabilities* there. Apply the same reasoning in Task 5.
+This item declares **no `registryDependencies`**, and neither do `auth` or `tables`, even though all three import `button`, `card` and `input`. Naming `button` here would be actively wrong: the route handler rewrites this registry's own item names to absolute URLs, so `shadcn add ai.json` would pull the *blueprint* button into a project that deliberately opted out of the component registry. Capabilities rely on the components the template already ships and drag nothing extra in. The registry stays opt-in.
 
 - [ ] **Step 5: Verify the item resolves**
 
@@ -1098,10 +1097,10 @@ Run:
 
 ```bash
 cd site && pnpm build && (pnpm start &) && sleep 5 && \
-  curl -sf http://localhost:3000/r/ai.json | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const i=JSON.parse(s);console.log(i.files.map(f=>f.target).join(' '));console.log('deps:', i.registryDependencies.join(' '))})"
+  curl -sf http://localhost:3000/r/ai.json | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const i=JSON.parse(s);console.log(i.files.map(f=>f.target).join(' '));console.log('deps:', i.registryDependencies?.join(' ') ?? 'none')})"
 ```
 
-Expected: the three targets, and `deps:` showing `button` rewritten to `http://localhost:3000/r/button.json` alongside the untouched `input` (which is not one of this registry's items and stays a bare upstream name).
+Expected: the three targets, and `deps: none`. A capability that lists registry dependencies has coupled itself to the optional component registry — that is the defect this check exists to catch.
 
 Kill the server: `pkill -f "next start"`.
 
@@ -1939,20 +1938,40 @@ The registry it pulls from is the `blueprint.registry` field in this
 project's `package.json`. Change that one field to point somewhere else.
 ````
 
-- [ ] **Step 3: Verify no stale instructions survive**
+- [ ] **Step 3: Fix the two stale lines in the spec**
+
+The spec discusses `degit` in three places as the *rejected* earlier design; leave those — they are the record of why the CLI exists. Two lines state it as current behaviour and are now wrong:
+
+`docs/superpowers/specs/2026-09-12-project-blueprint-design.md`, in "Architecture":
+
+```
+`scripts/blueprint.mjs` lives inside `template/`, so every generated app
+carries its own copy. Its source of truth is this repository; apps receive it
+when the setup CLI copies the template, and do not update it afterwards.
+```
+
+And in "Decisions needed before implementation":
+
+```
+- **Repository owner/name** appears in the `npx github:` command in the README
+  and in the CLI's default registry URL. Neither is baked into a published
+  artifact, so renaming the repository breaks nothing that already exists.
+```
+
+- [ ] **Step 4: Verify no stale instructions survive in the READMEs**
 
 Run:
 
 ```bash
-grep -rn "degit\|blueprint init" README.md template/README.md docs/superpowers/specs/ || echo "clean"
+grep -n "degit\|blueprint init" README.md template/README.md || echo "clean"
 ```
 
-Expected: `clean`. Any hit is a leftover from the pre-CLI design and must be fixed.
+Expected: `clean`. The greps are scoped to the two READMEs deliberately — the spec's `degit` mentions are historical and must survive.
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 5: Commit**
 
 ```bash
-git add README.md template/README.md
+git add README.md template/README.md docs/superpowers/specs/
 git commit -m "docs: one command to start, one command to grow"
 ```
 
