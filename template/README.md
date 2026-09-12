@@ -23,6 +23,13 @@ tracking — the app runs without it.
 | `pnpm format` | Biome check and write |
 | `pnpm test` | Vitest, browser mode |
 
+## Fonts
+
+`src/app/layout.tsx` declares three font slots — `--font-app-sans`, `--font-app-mono`
+and `--font-app-heading` — and `globals.css` maps Tailwind's `font-sans`, `font-mono`
+and `font-heading` onto them. The variable names are deliberately font-neutral, so
+changing a font means changing one `next/font/google` import and nothing else.
+
 ## Adding capabilities
 
 ```bash

@@ -3,15 +3,20 @@ import { Geist, Geist_Mono, Instrument_Sans } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 
-const instrumentSansHeading = Instrument_Sans({ subsets: ["latin"], variable: "--font-heading" });
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+// The CSS variable names are deliberately font-neutral. `blueprint preset` swaps
+// which next/font/google export feeds each one; nothing downstream has to change.
+const fontSans = Geist({
+  variable: "--font-app-sans",
   subsets: ["latin"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const fontMono = Geist_Mono({
+  variable: "--font-app-mono",
+  subsets: ["latin"],
+});
+
+const fontHeading = Instrument_Sans({
+  variable: "--font-app-heading",
   subsets: ["latin"],
 });
 
@@ -27,9 +32,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={cn(
         "h-full",
         "antialiased",
-        geistSans.variable,
-        geistMono.variable,
-        instrumentSansHeading.variable,
+        fontSans.variable,
+        fontMono.variable,
+        fontHeading.variable,
       )}
     >
       <body className="min-h-full flex flex-col">{children}</body>

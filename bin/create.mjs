@@ -7,8 +7,10 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import {
   BUNDLES,
   CAPABILITIES,
+  DEFAULT_PRESET,
   DEFAULT_REGISTRY,
   addCapabilities,
+  applyPreset,
   stripTests,
 } from "../template/scripts/blueprint.mjs";
 
@@ -56,6 +58,7 @@ export function parseArgs(argv) {
     capabilities: [],
     tests: true,
     registry: DEFAULT_REGISTRY,
+    preset: DEFAULT_PRESET,
     wireRegistry: false,
     yes: false,
   };
@@ -65,6 +68,7 @@ export function parseArgs(argv) {
     if (arg === "--no-tests") args.tests = false;
     else if (arg === "--yes" || arg === "-y") args.yes = true;
     else if (arg === "--registry") args.registry = value(argv, ++i, arg);
+    else if (arg === "--preset") args.preset = value(argv, ++i, arg);
     else if (arg === "--with-registry") args.wireRegistry = true;
     else if (arg === "--capabilities") {
       args.capabilities = value(argv, ++i, arg)
@@ -114,6 +118,14 @@ async function askMissing(args) {
       else if (choice === "3" || choice === "ai") args.capabilities = ["ai"];
     }
 
+    if (args.preset === DEFAULT_PRESET) {
+      args.preset = await prompt(
+        rl,
+        `shadcn preset? Enter a code from ui.shadcn.com/create, or press enter for the house default [${DEFAULT_PRESET}]`,
+        DEFAULT_PRESET,
+      );
+    }
+
     if (!args.wireRegistry) {
       const registry = await prompt(rl, "Wire the @blueprint component registry? [y/N]", "n");
       args.wireRegistry = registry.toLowerCase().startsWith("y");
@@ -160,6 +172,12 @@ async function main(argv) {
 
   process.stdout.write("\nInstalling dependencies\n");
   run("pnpm", ["install", "--no-frozen-lockfile"], target);
+
+  if (args.preset !== DEFAULT_PRESET) {
+    process.stdout.write(`\nApplying preset ${args.preset}\n`);
+    applyPreset(target, args.preset);
+    run("pnpm", ["install", "--no-frozen-lockfile"], target);
+  }
 
   if (args.capabilities.length > 0) {
     process.stdout.write(`\nAdding capabilities: ${args.capabilities.join(", ")}\n`);

@@ -233,6 +233,20 @@ invented oklch values. The preset supersedes it completely and covers more —
 fonts and chart colours included — while staying generated rather than
 maintained by hand. A hand-written theme item would only drift from it.
 
+**Choosing a different preset at setup is supported but is not just a flag.** `shadcn
+apply` gets three things wrong against this template, all verified: it rewrites
+globals.css's font slots to `var(--font-sans)`, a self-referential custom property
+that resolves to nothing; it edits layout.tsx's `cn()` call to append font variables
+under upstream's own identifier names, emitting a dangling comma and undeclared
+identifiers that fail `tsc`; and it installs the preset's icon package at a caret
+range without removing the old one — the two-icon-libraries defect named above.
+
+So the division of labour is: `apply` owns the theme CSS and the components, and
+`applyPreset` in `blueprint.mjs` owns the fonts and the icon dependency, snapshotting
+layout.tsx and the font slots across the call and repointing them deliberately. The
+template's font variables are named `--font-app-*` rather than `--font-geist-*` to
+make that repointing a one-line change per slot.
+
 Consequences: the template ships the preset applied. A foreign project that
 pulls a `@blueprint` component and has not applied the preset still works,
 because the component references the standard shadcn variables every shadcn
@@ -342,6 +356,7 @@ and the clone already contains `template/` — no separate `degit` step. The CLI
 2. Asks what is being built — nothing (landing page), `saas` (db + auth + tables), or `ai`
 3. Asks whether to wire the `@blueprint` component registry
 4. Asks whether to keep the test harness (default yes; see "Testing must be opt-out")
+5. Asks which shadcn preset to use, defaulting to the house preset `b7lltUjfaE`
 5. Copies `template/` into the target directory and sets the package name
 6. Runs `shadcn add` for the chosen capabilities
 7. Merges the `package.json` scripts those capabilities need

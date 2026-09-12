@@ -24,7 +24,29 @@ npx github:khantthura/project-blueprint my-app --capabilities saas --no-tests --
 | `--no-tests` | drop the Vitest harness |
 | `--registry <url>` | point at a different deployment |
 | `--with-registry` | wire the `@blueprint` namespace without prompting |
+| `--preset <code>` | a shadcn preset code from ui.shadcn.com/create; defaults to the house preset `b7lltUjfaE` |
 | `--yes` (or `-y`) | skip every prompt |
+
+### Design presets
+
+The template already ships with preset **`b7lltUjfaE`** applied, so accepting the
+default at setup changes nothing. Passing a different code re-themes the project:
+`shadcn apply` handles the colours and components, and the CLI then repoints
+`src/app/layout.tsx`'s fonts, swaps the icon dependency so the project never carries
+two icon libraries, and reformats what shadcn rewrote.
+
+A named style (`nova`, `vega`, `mira`, ...) works too, but only generated codes carry
+font information — with a named style the fonts are left alone and the CLI says so.
+
+Scaffolding a shadcn project *without* this CLI — no Sentry, env validation, Biome,
+Vitest or CI — is:
+
+```bash
+pnpm dlx shadcn@latest init --preset b7lltUjfaE --base radix --template next
+```
+
+`--base radix` is not optional there: the preset encodes the style but not the
+component library, and `init` otherwise defaults to Base UI.
 
 ## Grow a project
 
