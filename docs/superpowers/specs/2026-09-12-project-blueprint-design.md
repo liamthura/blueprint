@@ -158,9 +158,10 @@ project-blueprint/
 │   ├── src/app/page.tsx        # component gallery
 │   ├── src/app/r/[name]/       # serves registry items, dynamically
 │   ├── src/components/ui/      # the components
-│   ├── registry.json           # composes the rest via `include`
-│   └── registry/               # capability items (db, auth, ai, tables)
-├── template/                   # degit target — becomes each new app
+│   ├── registry.json           # every item, declared inline
+│   └── registry/               # capability source files (db, auth, ai, tables)
+├── bin/create.mjs              # the one-command setup CLI
+├── template/                   # copied by the CLI — becomes each new app
 │   ├── scripts/blueprint.mjs   # ships into every app
 │   └── scripts/blueprint.test.mjs
 └── docs/
@@ -306,8 +307,22 @@ This removes the sentinel, the stamping script, the committed build output and
 the CI drift check. It is less machinery than the design it replaces.
 
 Generated apps store their registry URL in a `blueprint.registry` field in
-their own `package.json`, written once by `blueprint init`. An app that needs
-to point elsewhere edits one field.
+their own `package.json`, written once by the setup CLI. An app that needs to
+point elsewhere edits one field.
+
+**Capabilities are always fetched over HTTP, never from a local clone.** `shadcn
+add ./item.json` does work against a local file, but only when the item carries its
+file contents inline as a JSON string — a `files[].path` is never resolved when the
+item is read from disk. Keeping capability sources as real `.ts` files therefore means
+serving them, and `loadRegistryItem()` inlines the content on the way out. The setup
+CLI consequently needs the site deployed, exactly as `pnpm blueprint add` does.
+
+**Capability items declare no `registryDependencies`.** Read from a local file, a bare
+name resolves against the *consumer's* working directory rather than the item's, so the
+dependency would only ever resolve over HTTP. The ordering lives in the capability table
+instead, which both CLIs share: `auth` expands to `db, auth` and both addresses are
+passed in one `shadcn add`. `registryDependencies` still does its normal job for
+`registry:ui` items, where `dialog` → `button` is shadcn's own business.
 
 ### One command to start a project
 
@@ -370,8 +385,8 @@ convenience.
 
 #### Testing must be opt-out at setup
 
-`blueprint init` offers a **"skip testing"** choice, and `--no-tests` skips the
-prompt. Not every project earns a test harness — a throwaway landing page or a
+The setup CLI offers a **"skip testing"** choice, and `--no-tests` answers it
+without prompting. Not every project earns a test harness — a throwaway landing page or a
 weekend experiment should not carry Playwright browsers in CI.
 
 This is a **strip**, not an add: the template ships tests by default, because a
@@ -383,12 +398,12 @@ later means recreating config rather than deleting it. Opting out removes:
 - `vitest.config.mts`
 - `src/**/*.test.ts` and `src/**/*.test.tsx`
 - the `test` script from `package.json`
-- the `pnpm test` and `playwright install` steps from
-  `.github/workflows/ci.yml`
-
-The CI edit is the fiddly part and the reason this belongs in the script rather
-than in the README as a manual instruction — leaving a `pnpm test` step in a
-project with no test runner produces a red pipeline nobody asked for.
+**CI needs no edit in either direction.** An earlier draft had the script rewrite
+`.github/workflows/ci.yml`, and called that the fiddly part. It is avoidable:
+`pnpm run --if-present test` exits 0 silently when the script is absent, and the
+browser-install step guards on `hashFiles('vitest.config.mts') != ''`. The workflow
+is written once to tolerate both states, so stripping and re-adding are pure
+file-and-dependency operations with no YAML surgery.
 
 Re-adding later is `pnpm blueprint add tests`, which makes `tests` a capability
 like any other. It is the one capability that is present by default and removed
@@ -422,12 +437,11 @@ is worth exactly one test.
 
 ## Growth path
 
-1. `npx degit <owner>/project-blueprint/template my-app` — landing page,
-   deploys immediately, no database, no environment variables.
-2. `pnpm blueprint init` — name, registry choice, optional bundle.
-3. Month 3, needs data: `pnpm blueprint add db`.
-4. Month 6, needs login: `pnpm blueprint add auth`.
-5. Month 9, needs AI: `pnpm blueprint add ai`.
+1. `npx github:<owner>/project-blueprint my-app` — four prompts, then a landing
+   page that deploys immediately, with no database and no environment variables.
+2. Month 3, needs data: `pnpm blueprint add db`.
+3. Month 6, needs login: `pnpm blueprint add auth`.
+4. Month 9, needs AI: `pnpm blueprint add ai`.
 
 No step restructures what came before.
 
