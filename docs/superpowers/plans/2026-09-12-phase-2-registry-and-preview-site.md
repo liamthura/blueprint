@@ -101,19 +101,25 @@ Expected: no output. **If anything under `template/` or the repository root appe
 {
   "$schema": "https://biomejs.dev/schemas/2.5.13/schema.json",
   "vcs": { "enabled": true, "clientKind": "git", "useIgnoreFile": true },
-  "files": { "ignoreUnknown": true, "includes": ["**", "!.next/**"] },
+  "files": { "ignoreUnknown": true, "includes": ["**", "!.next"] },
   "formatter": {
     "enabled": true,
     "indentStyle": "space",
     "indentWidth": 2,
     "lineWidth": 100
   },
-  "linter": { "enabled": true, "rules": { "recommended": true } },
+  "linter": { "enabled": true, "rules": { "preset": "recommended" } },
   "javascript": { "formatter": { "quoteStyle": "double", "semicolons": "always" } },
   "css": { "parser": { "tailwindDirectives": true } },
   "assist": { "actions": { "source": { "organizeImports": "on" } } }
 }
 ```
+
+Use `"preset": "recommended"`, not `"recommended": true` — the latter is deprecated in
+Biome 2.5.13 and emits an info on every run. `"!.next"` rather than `"!.next/**"`, which
+trips `lint/suspicious/useBiomeIgnoreFolder`. Do **not** reach for `biome migrate` to
+resolve either: it rewrites `recommended: true` into `preset: "none"`, which is a valid
+value meaning *no rules at all*, silently disabling every check.
 
 No `!template/**` exclusion is needed — `template/` is a sibling, not a child, so Biome
 running inside `site/` never sees it. Keep `rules.recommended: true`; if any tool
