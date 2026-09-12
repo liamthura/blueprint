@@ -12,13 +12,40 @@ cd my-app && pnpm install && pnpm dev
 That gives a landing page with Biome, Vitest, Sentry, typed environment variables and CI. No
 database, no auth, no coupling to this repository.
 
-## What is here
+## Using the registry
+
+The deployment is both the component gallery and the registry host.
+
+Pull one item with no configuration:
+
+```bash
+pnpm dlx shadcn@latest add https://<your-deployment>/r/button.json
+```
+
+Or register the namespace once per project and use short names:
+
+```bash
+pnpm dlx shadcn@latest registry add @blueprint=https://<your-deployment>/r/{name}.json
+pnpm dlx shadcn@latest add @blueprint/button
+```
+
+The registry reads its own hostname from the request, so moving to a custom
+domain needs no change here.
+
+## Design baseline
+
+Every blueprint project uses shadcn preset `b7lltUjfaE` — `radix-mira` style,
+`taupe` base, green theme, phosphor icons, geist with instrument-sans headings,
+zero radius. Apply it to any existing project with:
+
+```bash
+pnpm dlx shadcn@latest apply b7lltUjfaE
+```
 
 | Path | What |
 |---|---|
+| `site/` | The gallery and registry host (deployed) |
+| `site/src/app/r/[name]` | Serves registry items |
+| `site/registry.json` | The catalogue |
 | `template/` | The app cloned by `degit` |
-| `docs/superpowers/specs/` | Design decisions and their evidence |
-| `docs/superpowers/plans/` | Implementation plans |
-
-Phases 2 (registry and preview site) and 3 (capabilities and the `blueprint` script) are not
-built yet — see the spec.
+| `docs/superpowers/` | Specs and plans |
