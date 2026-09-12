@@ -149,6 +149,50 @@
           "target": "src/components/chat.tsx"
         }
       ]
+    },
+    {
+      "name": "tables",
+      "type": "registry:lib",
+      "title": "Data tables",
+      "description": "TanStack Table with sorting, plus a TanStack Query provider for client-side fetching.",
+      "dependencies": [
+        "@tanstack/react-table@9.2.4",
+        "@tanstack/react-query@5.102.8",
+        "@phosphor-icons/react@2.1.10"
+      ],
+      "files": [
+        {
+          "path": "registry/tables/query-provider.tsx",
+          "type": "registry:component",
+          "target": "src/components/query-provider.tsx"
+        },
+        {
+          "path": "registry/tables/data-table.tsx",
+          "type": "registry:component",
+          "target": "src/components/data-table.tsx"
+        }
+      ]
+    },
+    {
+      "name": "tests",
+      "type": "registry:lib",
+      "title": "Test harness",
+      "description": "Restores the Vitest browser-mode harness to a project created with --no-tests.",
+      "devDependencies": [
+        "vitest@4.1.11",
+        "@vitest/browser-playwright@4.1.11",
+        "vite@8.3.0",
+        "@vitejs/plugin-react@6.1.1",
+        "playwright@1.63.0",
+        "@testing-library/react@16.3.3"
+      ],
+      "files": [
+        {
+          "path": "registry/tests/vitest.config.mts",
+          "type": "registry:file",
+          "target": "vitest.config.mts"
+        }
+      ]
     }
   ]
 }
