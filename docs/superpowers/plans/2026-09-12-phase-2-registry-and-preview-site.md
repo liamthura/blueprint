@@ -225,31 +225,27 @@ git commit -m "feat(registry): apply preset b7lltUjfaE and add components"
 ### Task 3: The registry catalogue
 
 **Files:**
-- Create: `site/registry.json`, `site/registry/ui.json`
+- Create: `site/registry.json` (one file — see below)
 
 **All paths are relative to `site/`.**
 
 **Interfaces:**
 - Produces: four items — `button`, `dialog`, `dropdown-menu`, `sonner` — loadable by `loadRegistryItem(name)`.
 
-- [ ] **Step 1: Create `registry.json`**
+- [ ] **Step 1: Create `site/registry.json` with the items inline**
+
+An earlier draft split this into `registry.json` plus an included `registry/ui.json`.
+That does not work: shadcn 4.21.0 requires every `include` target's basename to be
+literally `registry.json`, and relocating to `registry/ui/registry.json` then breaks
+`files.path`, which resolves relative to the included file rather than the cwd. Four
+items do not need splitting anyway — `include` was solving a file-organisation problem
+this registry does not have yet. One file, inline items:
 
 ```json
 {
   "$schema": "https://ui.shadcn.com/schema/registry.json",
   "name": "blueprint",
   "homepage": "https://github.com/khantthura/project-blueprint",
-  "include": ["registry/ui.json"]
-}
-```
-
-`include` keeps one file per group rather than one growing catalogue. Item names must stay unique across included files.
-
-- [ ] **Step 2: Create `registry/ui.json`**
-
-```json
-{
-  "$schema": "https://ui.shadcn.com/schema/registry.json",
   "items": [
     {
       "name": "button",
@@ -296,26 +292,37 @@ No item declares a `registryDependencies` on a theme, because there is no theme 
 import. This is the only cross-reference among the four — verified by grepping
 `@/components/ui/` across all of them — and it is what Task 4's URL rewriting operates on.
 
-- [ ] **Step 3: Verify both loaders work**
+- [ ] **Step 2: Verify both loaders work**
 
 ```bash
 node --input-type=module -e "
 import { loadRegistry, loadRegistryItem } from 'shadcn/registry';
 const reg = await loadRegistry({ cwd: process.cwd() });
 console.log('items:', reg.items.map(i => i.name).join(', '));
-const b = await loadRegistryItem('button', { cwd: process.cwd() });
-console.log('button name:', b.name, '| normalised type:', b.type);
+const d = await loadRegistryItem('dialog', { cwd: process.cwd() });
+console.log('dialog:', d.name, '| type:', d.type, '| deps:', JSON.stringify(d.registryDependencies));
+console.log('dialog files:', JSON.stringify(d.files?.map(f => f.path)));
 "
 ```
 
-Expected: `items: button, dialog, dropdown-menu, sonner` and `button name: button | normalised type: registry:base`.
+Expected, exactly:
 
-**Assert on `name`, never on `type`** — `loadRegistryItem` normalises every item to `registry:base` regardless of what the source declares. If this throws, the `include` path or a `files.path` is wrong, and everything downstream depends on it.
+```
+items: button, dialog, dropdown-menu, sonner
+dialog: dialog | type: registry:ui | deps: ["button"]
+dialog files: ["src/components/ui/dialog.tsx"]
+```
 
-- [ ] **Step 4: Commit**
+The `dialog` line is the one that matters: it confirms the cross-component dependency
+survives loading, which Task 5 then rewrites into an absolute URL.
+
+If the script throws, a `files.path` is wrong and everything in Tasks 4-7 depends on
+these two calls working.
+
+- [ ] **Step 3: Commit**
 
 ```bash
-git add registry.json registry
+git add registry.json
 git commit -m "feat(registry): add the catalogue"
 ```
 
