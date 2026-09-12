@@ -1,36 +1,46 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# New project
 
-## Getting Started
+Built from [project-blueprint](https://github.com/anomalyco/project-blueprint).
 
-First, run the development server:
+## Running it
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
+pnpm install
 pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+No environment variables are required. Copy `.env.example` to `.env` when you want error
+tracking — the app runs without it.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Scripts
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Script | Does |
+|---|---|
+| `pnpm dev` | Development server |
+| `pnpm build` | Production build |
+| `pnpm typecheck` | `tsc --noEmit` |
+| `pnpm lint` | Biome check |
+| `pnpm format` | Biome check and write |
+| `pnpm test` | Vitest, browser mode |
 
-## Learn More
+## Adding components
 
-To learn more about Next.js, take a look at the following resources:
+Vanilla shadcn works out of the box:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+pnpm dlx shadcn@latest add dialog
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Known deviations
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `shadcn init --base-color neutral` no longer exists in the v4 CLI (2026-09-12). The
+  template is initialised with `--defaults` (which yields `baseColor: neutral`) plus
+  `--base radix`, because the v4 default is Base UI components and the blueprint standardises
+  on the unified `radix-ui` package.
+- `cn()` is re-exported from the `cn` npm package (shadcn v4 convention) rather than defined
+  over `clsx` + `tailwind-merge` in `src/lib/utils.ts`.
+- `biome.json` enables the Tailwind CSS parser option (required for Tailwind v4 `@theme`) and
+  disables `a11y/noSvgWithoutTitle` for scaffold SVGs under `public/`.
+- `vitest.config.ts` uses workspace projects: `*.test.tsx` runs in Chromium (browser mode),
+  `*.test.ts` runs in Node. Server-side modules such as `src/env.ts` cannot load in a real
+  browser (`process` is undefined), so a single browser-only project cannot cover both.
