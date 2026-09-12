@@ -1,0 +1,40 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry.json",
+  "name": "blueprint",
+  "homepage": "https://github.com/khantthura/project-blueprint",
+  "items": [
+    {
+      "name": "button",
+      "type": "registry:ui",
+      "title": "Button",
+      "description": "Button with the blueprint defaults.",
+      "dependencies": ["class-variance-authority", "cn", "radix-ui"],
+      "files": [{ "path": "src/components/ui/button.tsx", "type": "registry:ui" }]
+    },
+    {
+      "name": "dialog",
+      "type": "registry:ui",
+      "title": "Dialog",
+      "description": "Dialog with the blueprint defaults.",
+      "registryDependencies": ["button"],
+      "dependencies": ["cn", "radix-ui", "@phosphor-icons/react"],
+      "files": [{ "path": "src/components/ui/dialog.tsx", "type": "registry:ui" }]
+    },
+    {
+      "name": "dropdown-menu",
+      "type": "registry:ui",
+      "title": "Dropdown menu",
+      "description": "Dropdown menu with the blueprint defaults.",
+      "dependencies": ["cn", "radix-ui", "@phosphor-icons/react"],
+      "files": [{ "path": "src/components/ui/dropdown-menu.tsx", "type": "registry:ui" }]
+    },
+    {
+      "name": "sonner",
+      "type": "registry:ui",
+      "title": "Sonner",
+      "description": "Toast wrapper with the blueprint defaults.",
+      "dependencies": ["sonner", "next-themes", "@phosphor-icons/react"],
+      "files": [{ "path": "src/components/ui/sonner.tsx", "type": "registry:ui" }]
+    }
+  ]
+}
