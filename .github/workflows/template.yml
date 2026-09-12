@@ -27,3 +27,68 @@ jobs:
       - name: Typecheck, lint, test, build
         working-directory: ${{ runner.temp }}/app
         run: pnpm typecheck && pnpm lint && pnpm test && pnpm build
+
+  build-with-capabilities:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: postgres://blueprint:blueprint@localhost:5432/blueprint
+      BETTER_AUTH_SECRET: ci-secret-that-is-long-enough-to-pass-validation
+      BETTER_AUTH_URL: http://localhost:3000
+      OPENAI_API_KEY: sk-ci-not-a-real-key
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.0.0
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+
+      - name: Build and serve the registry
+        working-directory: site
+        shell: bash
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm build
+          pnpm start &
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:3000/r/registry.json >/dev/null && exit 0
+            sleep 1
+          done
+          echo "registry never came up"
+          exit 1
+
+      - name: Create an app with every capability
+        run: |
+          node bin/create.mjs "${RUNNER_TEMP}/app" \
+            --capabilities db,auth,ai,tables \
+            --registry http://localhost:3000 \
+            --no-tests --yes
+
+      - name: The capabilities must have been wired in
+        working-directory: ${{ runner.temp }}/app
+        shell: bash
+        run: |
+          for f in src/lib/db/index.ts src/lib/auth.ts src/lib/db/auth-schema.ts \
+                   src/app/api/auth/\[...all\]/route.ts src/app/api/chat/route.ts \
+                   src/components/data-table.tsx drizzle.config.ts docker-compose.yml; do
+            test -f "$f" || { echo "missing: $f"; exit 1; }
+          done
+          node -e "
+            const p = require('./package.json');
+            for (const s of ['db:up','db:migrate','db:studio','test:e2e']) {
+              if (!p.scripts[s]) { console.error('missing script: ' + s); process.exit(1); }
+            }
+            if (p.scripts.test) { console.error('--no-tests left the test script behind'); process.exit(1); }
+          "
+          grep -q '^DATABASE_URL=' .env.example
+          grep -q '^BETTER_AUTH_SECRET=' .env.example
+          grep -q '^OPENAI_API_KEY=' .env.example
+
+      - name: Typecheck, lint and build the generated app
+        working-directory: ${{ runner.temp }}/app
+        run: pnpm typecheck && pnpm lint && pnpm build
+
+      - name: Adding a capability twice must not break the project
+        working-directory: ${{ runner.temp }}/app
+        run: pnpm blueprint add db && pnpm typecheck
