@@ -129,12 +129,16 @@ export function appendEnvExample(dir, names) {
   let text = readFileSync(path, "utf8");
   const added = [];
   for (const name of names) {
-    for (const line of CAPABILITIES[name].env) {
+    const lines = CAPABILITIES[name].env.filter((line) => {
       const key = line.slice(0, line.indexOf("="));
-      if (new RegExp(`^${key}=`, "m").test(text)) continue;
-      if (!text.endsWith("\n")) text += "\n";
+      return !new RegExp(`^${key}=`, "m").test(text);
+    });
+    if (lines.length === 0) continue;
+    if (!text.endsWith("\n")) text += "\n";
+    text += `# ${name}\n`;
+    for (const line of lines) {
       text += `${line}\n`;
-      added.push(key);
+      added.push(line.slice(0, line.indexOf("=")));
     }
   }
   if (added.length > 0) writeFileSync(path, text);
@@ -212,5 +216,10 @@ function main(argv) {
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  main(process.argv.slice(2));
+  try {
+    main(process.argv.slice(2));
+  } catch (error) {
+    process.stderr.write(`\n${error.message}\n`);
+    process.exitCode = 1;
+  }
 }

@@ -89,6 +89,13 @@ test("appendEnvExample appends once and never duplicates a key", () => {
   assert.match(text, /^SENTRY_DSN=$/m, "must not disturb existing entries");
 });
 
+test("appendEnvExample labels each capability's block with a comment", () => {
+  const dir = fixture();
+  appendEnvExample(dir, ["db"]);
+  const text = readFileSync(join(dir, ".env.example"), "utf8");
+  assert.match(text, /^# db\nDATABASE_URL=/m);
+});
+
 test("registryUrl prefers the project's own setting", () => {
   assert.equal(
     registryUrl(fixture({ blueprint: { registry: "https://x.test" } })),
