@@ -608,12 +608,17 @@ The list is generated from `registry.json`, so a new item appears without editin
 ```bash
 pnpm dev &
 sleep 6
-echo "items rendered: $(curl -s http://localhost:3000 | grep -c 'shadcn@latest add')"
+echo "item cards rendered: $(curl -s http://localhost:3000 | grep -o '<li ' | wc -l | tr -d ' ')"
 kill %1
 pnpm format && pnpm typecheck && pnpm lint && pnpm test && pnpm build
 ```
 
-Expected: `items rendered: 4`, then all checks pass.
+Expected: `item cards rendered: 4`, then all checks pass.
+
+Count `<li ` elements, not occurrences of the install command. `grep -c` counts matching
+*lines*, and the served HTML is a single minified line, so it can only ever return 0 or 1.
+`grep -o` on the command string is no better: it returns 8, because every string appears
+twice — once in the rendered markup and once in Next's embedded RSC payload.
 
 - [ ] **Step 3: Commit**
 
