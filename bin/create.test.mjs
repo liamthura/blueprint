@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
-import { existsSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
-import { copyTemplate, parseArgs } from "./create.mjs";
+import { copyTemplate, ensureGitignore, parseArgs } from "./create.mjs";
 
 test("parseArgs takes the target from the first positional", () => {
   const args = parseArgs(["my-app"]);
@@ -56,6 +56,10 @@ test("parseArgs can wire the registry without prompting", () => {
   assert.equal(parseArgs(["app", "--with-registry"]).wireRegistry, true);
 });
 
+test("parseArgs rejects a second positional argument", () => {
+  assert.throws(() => parseArgs(["app", "extra"]), /Unexpected argument: extra/);
+});
+
 test("copyTemplate skips build output and installed dependencies", () => {
   const from = mkdtempSync(join(tmpdir(), "tpl-"));
   const to = join(mkdtempSync(join(tmpdir(), "out-")), "app");
@@ -78,4 +82,39 @@ test("copyTemplate skips build output and installed dependencies", () => {
   assert.ok(!existsSync(join(to, "node_modules")));
   assert.ok(!existsSync(join(to, ".next")));
   assert.ok(!existsSync(join(to, "tsconfig.tsbuildinfo")));
+});
+
+test("ensureGitignore writes one when the copy didn't bring one", () => {
+  const templateDir = mkdtempSync(join(tmpdir(), "tpl-"));
+  const target = mkdtempSync(join(tmpdir(), "out-"));
+  // templateDir has no .gitignore, simulating npx github: stripping it out.
+
+  ensureGitignore(templateDir, target);
+
+  const gitignore = readFileSync(join(target, ".gitignore"), "utf8");
+  assert.ok(existsSync(join(target, ".gitignore")));
+  assert.match(gitignore, /\.env\*/);
+});
+
+test("ensureGitignore leaves an existing .gitignore alone", () => {
+  const templateDir = mkdtempSync(join(tmpdir(), "tpl-"));
+  const target = mkdtempSync(join(tmpdir(), "out-"));
+  writeFileSync(join(target, ".gitignore"), "custom\n");
+
+  ensureGitignore(templateDir, target);
+
+  assert.equal(readFileSync(join(target, ".gitignore"), "utf8"), "custom\n");
+});
+
+test("ensureGitignore prefers the template's own .gitignore when it's readable", () => {
+  const templateDir = mkdtempSync(join(tmpdir(), "tpl-"));
+  const target = mkdtempSync(join(tmpdir(), "out-"));
+  writeFileSync(join(templateDir, ".gitignore"), "/node_modules\n.env*\n!.env.example\n");
+
+  ensureGitignore(templateDir, target);
+
+  assert.equal(
+    readFileSync(join(target, ".gitignore"), "utf8"),
+    "/node_modules\n.env*\n!.env.example\n",
+  );
 });

@@ -17,6 +17,33 @@ const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 /** Never copied into a new project: build output, installed deps, and local caches. */
 const SKIP = new Set(["node_modules", ".next", "tsconfig.tsbuildinfo", ".turbo", ".vercel"]);
 
+/**
+ * `template/.gitignore` is dropped from the tarball by npm-packlist's always-excluded
+ * defaults, so `npx github:...` never ships it. This is the fallback for when the
+ * source file isn't readable in the repo clone either.
+ */
+const FALLBACK_GITIGNORE = `/node_modules
+/.next/
+/build
+/out/
+.env*
+!.env.example
+*.tsbuildinfo
+next-env.d.ts
+.DS_Store
+/coverage
+.vercel
+`;
+
+/** Writes a .gitignore into `target` if the copy from `templateDir` didn't bring one. */
+export function ensureGitignore(templateDir, target) {
+  const path = join(target, ".gitignore");
+  if (existsSync(path)) return;
+  const source = join(templateDir, ".gitignore");
+  const content = existsSync(source) ? readFileSync(source, "utf8") : FALLBACK_GITIGNORE;
+  writeFileSync(path, content);
+}
+
 function value(argv, index, flag) {
   const found = argv[index];
   if (found === undefined || found.startsWith("-")) throw new Error(`${flag} needs a value`);
@@ -87,8 +114,10 @@ async function askMissing(args) {
       else if (choice === "3" || choice === "ai") args.capabilities = ["ai"];
     }
 
-    const registry = await prompt(rl, "Wire the @blueprint component registry? [y/N]", "n");
-    args.wireRegistry = registry.toLowerCase().startsWith("y");
+    if (!args.wireRegistry) {
+      const registry = await prompt(rl, "Wire the @blueprint component registry? [y/N]", "n");
+      args.wireRegistry = registry.toLowerCase().startsWith("y");
+    }
 
     if (args.tests) {
       const keep = await prompt(rl, "Keep the test harness? [Y/n]", "y");
@@ -116,6 +145,7 @@ async function main(argv) {
 
   process.stdout.write(`\nCreating ${name} in ${target}\n`);
   copyTemplate(join(repoRoot, "template"), target);
+  ensureGitignore(join(repoRoot, "template"), target);
 
   const packagePath = join(target, "package.json");
   const pkg = JSON.parse(readFileSync(packagePath, "utf8"));
@@ -129,7 +159,7 @@ async function main(argv) {
   }
 
   process.stdout.write("\nInstalling dependencies\n");
-  run("pnpm", ["install"], target);
+  run("pnpm", ["install", "--no-frozen-lockfile"], target);
 
   if (args.capabilities.length > 0) {
     process.stdout.write(`\nAdding capabilities: ${args.capabilities.join(", ")}\n`);
