@@ -23,9 +23,9 @@
   - `@sentry/nextjs@10.74.0`
   - `@t3-oss/env-nextjs@0.13.11`, `zod@4.6.2`
   - `@testing-library/react@16.3.3`
-  - `class-variance-authority@0.7.1`, `clsx@2.1.1`, `tailwind-merge@3.6.0`, `lucide-react@1.45.0`, `radix-ui@1.6.7`
+  - `class-variance-authority@0.7.1`, `clsx@2.1.1`, `tailwind-merge@3.6.0`, `@phosphor-icons/react@2.1.10`, `radix-ui@1.6.7`
 - **Do NOT install:** ESLint (Biome replaces it), `@playwright/test` — the test runner, which ships with the `auth` capability in Phase 3. Note `playwright` (the browser driver) IS installed in Task 4; they are different packages and only the runner is excluded. Also excluded: TanStack Query, Drizzle, better-auth, `next-themes`, `sonner`, `motion`. Phase 1 is the landing-page floor only.
-- **Icons: `lucide-react` only.** Never Phosphor.
+- **One icon library, set via `iconLibrary` in `components.json`.** The template uses `phosphor`. The shadcn CLI rewrites icon imports to match on every `add`, so this is a one-field decision, not a lock-in. Never install two icon packages in the same project — that is the actual defect this rule prevents.
 - **Radix: the unified `radix-ui` package only.** Never per-component `@radix-ui/react-*`.
 - **The template must build and deploy with an empty `.env`.** Every environment variable in Phase 1 is `.optional()`. If any step makes a variable required, the step is wrong.
 - **British English** in all prose, comments and documentation.
@@ -200,6 +200,27 @@ git commit -m "feat(template): replace ESLint with Biome"
 ```bash
 cd template && pnpm dlx shadcn@4.21.0 init --yes --base-color neutral
 ```
+
+- [ ] **Step 1b: Set the icon library**
+
+Add to `template/components.json` at the top level:
+
+```json
+  "iconLibrary": "phosphor",
+```
+
+Then verify the CLI honours it — the components added in Step 3 must import
+from `@phosphor-icons/react`, not `lucide-react`:
+
+```bash
+cd template && grep -r "lucide-react" src/components/ui/ && echo "WRONG — see below" || echo "correct"
+```
+
+If any component still imports `lucide-react`, the installed CLI version does
+not apply `iconLibrary` on `add`. In that case remove `lucide-react`, install
+`@phosphor-icons/react@2.1.10`, and fix the imports by hand — there are three
+components, so this is minutes, not hours. Record it under
+`## Known deviations` in `template/README.md`.
 
 - [ ] **Step 2: Verify `components.json` has no `registries` key**
 

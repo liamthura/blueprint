@@ -120,10 +120,28 @@ this reason.
 
 ### Settled house rules
 
-Lucide over Phosphor (every shadcn snippet ships Lucide imports). `motion`, not
-`framer-motion` (same library, post-rename). The unified `radix-ui` package,
-not per-component `@radix-ui/react-*` — `project-twin` needed a five-package
-`overrides` block to unstick the latter. pnpm, pinned via `packageManager`.
+**One icon library, declared in `components.json`.** `iconLibrary` is a
+first-class field in the shadcn schema, and the CLI rewrites icon imports to
+match it on every `add`. Supported: `lucide`, `tabler`, `hugeicons`,
+`phosphor`, `remix`. So the choice is free, and an earlier draft of this spec
+was wrong to justify Lucide on the grounds that anything else meant re-mapping
+snippets by hand.
+
+The template defaults to **`phosphor`**, matching the most recent existing
+project (`project-lazybee`). The residual cost is small and worth naming:
+Lucide is shadcn's default and runs 73M weekly downloads against Phosphor's
+2.7M, so example code pasted from blogs and upstream blocks will assume Lucide
+imports. The CLI covers `add`; hand-pasted code does not.
+
+**What actually matters is picking one.** `project-lighthouse` currently
+carries both `lucide-react` and `@phosphor-icons/react` — that is the defect,
+not which one was chosen. Changing a project's mind later is one field plus
+re-running `add`.
+
+`motion`, not `framer-motion` (same library, post-rename). The unified
+`radix-ui` package, not per-component `@radix-ui/react-*` — `project-twin`
+needed a five-package `overrides` block to unstick the latter. pnpm, pinned via
+`packageManager`.
 
 ## Architecture
 
