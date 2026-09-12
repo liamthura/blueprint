@@ -331,7 +331,7 @@ git commit -m "feat(registry): add the catalogue"
 ### Task 4: Absolute-URL rewriting, with tests
 
 **Files:**
-- Create: `site/src/lib/registry.ts`, `site/src/lib/registry.test.ts`, `site/vitest.config.mts`
+- Create: `site/src/lib/registry-urls.ts`, `site/src/lib/registry-urls.test.ts`, `site/vitest.config.mts`
 
 **All commands in this task run from inside `site/`.**
 
@@ -365,11 +365,11 @@ No browser mode here, unlike `template/` — the gallery is verified by building
 
 - [ ] **Step 2: Write the failing tests**
 
-Create `src/lib/registry.test.ts`:
+Create `src/lib/registry-urls.test.ts`:
 
 ```ts
 import { describe, expect, it } from "vitest";
-import { absolutiseDependencies } from "./registry";
+import { absolutiseDependencies } from "./registry-urls";
 
 const own = new Set(["db", "auth", "button"]);
 
@@ -414,12 +414,16 @@ describe("absolutiseDependencies", () => {
 - [ ] **Step 3: Run them to confirm they fail**
 
 ```bash
-pnpm vitest run src/lib/registry.test.ts
+pnpm vitest run src/lib/registry-urls.test.ts
 ```
 
-Expected: FAIL — `Cannot find module './registry'`.
+Expected: FAIL. **Do not assume the failure message.** Record whatever vitest actually
+prints — the `./registry` specifier used by an earlier draft resolved to `registry.json`
+at the Vite root when the TS file was absent, producing a `TypeError` about a missing
+export rather than a module-resolution error. The rename to `registry-urls` removes that
+ambiguity, but the rule stands: report the real output, never the predicted one.
 
-- [ ] **Step 4: Create `src/lib/registry.ts`**
+- [ ] **Step 4: Create `src/lib/registry-urls.ts`**
 
 ```ts
 export type RegistryItemLike = {
@@ -472,14 +476,14 @@ git commit -m "feat(registry): rewrite own dependencies to absolute URLs"
 - Create: `site/src/app/r/[name]/route.ts`
 
 **Interfaces:**
-- Consumes: `absolutiseDependencies` from `@/lib/registry` (Task 4); `loadRegistry`, `loadRegistryItem`, `RegistryItemNotFoundError` from `shadcn/registry`.
+- Consumes: `absolutiseDependencies` from `@/lib/registry-urls` (Task 4); `loadRegistry`, `loadRegistryItem`, `RegistryItemNotFoundError` from `shadcn/registry`.
 - Produces: `GET /r/{name}.json` returning an item; `GET /r/registry.json` returning the catalogue.
 
 - [ ] **Step 1: Create `src/app/r/[name]/route.ts`**
 
 ```ts
 import { loadRegistry, loadRegistryItem, RegistryItemNotFoundError } from "shadcn/registry";
-import { absolutiseDependencies } from "@/lib/registry";
+import { absolutiseDependencies } from "@/lib/registry-urls";
 
 export const dynamic = "force-dynamic";
 
