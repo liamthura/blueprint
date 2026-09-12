@@ -123,6 +123,32 @@
           "target": "e2e/sign-up.spec.ts"
         }
       ]
+    },
+    {
+      "name": "ai",
+      "type": "registry:lib",
+      "title": "AI chat",
+      "description": "A streaming chat route and client component on the AI SDK, against any OpenAI-compatible endpoint.",
+      "dependencies": [
+        "ai@7.0.99",
+        "@ai-sdk/react@4.0.102",
+        "@ai-sdk/openai@4.0.66",
+        "@t3-oss/env-nextjs@0.13.11",
+        "zod@4.6.2"
+      ],
+      "files": [
+        { "path": "registry/ai/ai-env.ts", "type": "registry:lib", "target": "src/lib/ai-env.ts" },
+        {
+          "path": "registry/ai/route.ts",
+          "type": "registry:file",
+          "target": "src/app/api/chat/route.ts"
+        },
+        {
+          "path": "registry/ai/chat.tsx",
+          "type": "registry:component",
+          "target": "src/components/chat.tsx"
+        }
+      ]
     }
   ]
 }
