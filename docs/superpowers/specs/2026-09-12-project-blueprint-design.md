@@ -301,6 +301,32 @@ Merging `package.json` scripts is the only capability the registry format
 genuinely lacks, and is the script's actual justification. Steps 1–4 are
 convenience.
 
+#### Testing must be opt-out at setup
+
+`blueprint init` offers a **"skip testing"** choice, and `--no-tests` skips the
+prompt. Not every project earns a test harness — a throwaway landing page or a
+weekend experiment should not carry Playwright browsers in CI.
+
+This is a **strip**, not an add: the template ships tests by default, because a
+default of "untested" is the wrong default, and because adding the harness back
+later means recreating config rather than deleting it. Opting out removes:
+
+- devDependencies `vitest`, `@vitest/browser-playwright`, `vite`,
+  `@vitejs/plugin-react`, `playwright`, `@testing-library/react`
+- `vitest.config.mts`
+- `src/**/*.test.ts` and `src/**/*.test.tsx`
+- the `test` script from `package.json`
+- the `pnpm test` and `playwright install` steps from
+  `.github/workflows/ci.yml`
+
+The CI edit is the fiddly part and the reason this belongs in the script rather
+than in the README as a manual instruction — leaving a `pnpm test` step in a
+project with no test runner produces a red pipeline nobody asked for.
+
+Re-adding later is `pnpm blueprint add tests`, which makes `tests` a capability
+like any other. It is the one capability that is present by default and removed
+on request, rather than absent by default and added.
+
 ## Testing and CI
 
 **CI shipped in the template** (runs in each generated app): typecheck,
@@ -376,6 +402,14 @@ it. Acceptable — `shadcn add` is not in any hot path, and a failed add is
 retried rather than silently wrong — but it is a live dependency where the
 previous design had none.
 
+**`cn` is days old and pre-1.0.** The template's class-name utility is
+`cn@0.2.6`, published 2026-09-06. It is genuinely first-party — shadcn's own
+repository, zero dependencies, 1.38M weekly downloads — and it is what the
+current shadcn component style imports. But it sits in the dependency floor of
+every future project at version 0.2.x. Watch for a 1.0; the fallback is the
+previous `clsx` + `tailwind-merge` pair, which is a two-line change to
+`src/lib/utils.ts`.
+
 **Drizzle's stable line is stale.** `latest` has not moved since March 2026
 while v1 sits in RC. If v1 ships with breaking changes, migration cost lands on
 every project carrying the `db` capability.
@@ -402,6 +436,15 @@ the repository name — turned out to be soft:
 - **Repository owner/name** appears only in the `degit` command in the README.
   It is not baked into any published artifact, so renaming the repository
   breaks nothing that already exists.
+
+## Known cosmetic issues
+
+**pnpm warns that `@sentry/cli`'s build script was ignored** on every install.
+The binary is only needed to upload source maps, which requires a Sentry auth
+token the template does not set, so nothing is broken. pnpm 10.0.0 and newer
+pnpm releases disagree about where `onlyBuiltDependencies` belongs
+(`package.json` vs `pnpm-workspace.yaml`), and neither `.npmrc` nor a bare
+`pnpm-workspace.yaml` silenced it. Left alone deliberately rather than chased.
 
 ## Deferred
 
