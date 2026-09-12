@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { absolutiseDependencies } from "./registry";
+import { absolutiseDependencies } from "./registry-urls";
 
 const own = new Set(["db", "auth", "button"]);
 
