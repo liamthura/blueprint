@@ -7,6 +7,8 @@ export const dynamic = "force-dynamic";
 export default async function Gallery() {
   const registry = await loadRegistry({ cwd: process.cwd() });
   const items = registry.items;
+  const components = items.filter((item) => item.type === "registry:ui");
+  const capabilities = items.filter((item) => item.type === "registry:lib");
 
   const requestHeaders = await headers();
   const host = requestHeaders.get("host") ?? "localhost:3000";
@@ -17,11 +19,11 @@ export default async function Gallery() {
     <main className="mx-auto max-w-3xl px-6 py-16">
       <h1 className="font-heading font-semibold text-3xl tracking-tight">blueprint</h1>
       <p className="mt-2 text-muted-foreground">
-        {items.length} items. Add one to a project with the command beneath it.
+        {components.length} components and {capabilities.length} capabilities.
       </p>
 
       <ul className="mt-10 space-y-4">
-        {items.map((item) => (
+        {components.map((item) => (
           <li key={item.name} className="rounded-lg border p-4">
             <div className="flex items-baseline justify-between gap-4">
               <h2 className="font-medium">{item.title ?? item.name}</h2>
@@ -39,6 +41,30 @@ export default async function Gallery() {
           </li>
         ))}
       </ul>
+
+      <section className="mt-16 border-t pt-8">
+        <h2 className="font-heading font-medium text-xl">Capabilities</h2>
+        <p className="mt-2 text-muted-foreground text-sm">
+          Added to a project with the in-project script, which also merges the package.json scripts
+          and environment variables each one needs.
+        </p>
+        <ul className="mt-6 space-y-4">
+          {capabilities.map((item) => (
+            <li key={item.name} className="rounded-lg border p-4">
+              <div className="flex items-baseline justify-between gap-4">
+                <h3 className="font-medium">{item.title ?? item.name}</h3>
+                <code className="text-muted-foreground text-xs">{item.name}</code>
+              </div>
+              {item.description ? (
+                <p className="mt-1 text-muted-foreground text-sm">{item.description}</p>
+              ) : null}
+              <code className="mt-3 block overflow-x-auto rounded bg-muted px-3 py-2 text-xs">
+                pnpm blueprint add {item.name}
+              </code>
+            </li>
+          ))}
+        </ul>
+      </section>
 
       <section className="mt-16 border-t pt-8">
         <h2 className="font-heading font-medium text-xl">Button</h2>
