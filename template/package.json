@@ -3,13 +3,15 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "blueprint": "node scripts/blueprint.mjs",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "typecheck": "next typegen && tsc --noEmit",
     "lint": "biome check .",
     "format": "biome check --write .",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:scripts": "node --test scripts/"
   },
   "dependencies": {
     "@phosphor-icons/react": "2.1.10",
