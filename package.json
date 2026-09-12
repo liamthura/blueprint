@@ -1,0 +1,9 @@
+{
+  "name": "project-blueprint",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "One command to start a project on the blueprint stack.",
+  "bin": "bin/create.mjs",
+  "license": "MIT"
+}
