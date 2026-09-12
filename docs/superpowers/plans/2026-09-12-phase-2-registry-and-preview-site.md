@@ -4,7 +4,9 @@
 
 **Goal:** Turn the repository root into a Next app that is simultaneously the component gallery and the registry host, serving items from a route handler that learns its own hostname from the request.
 
-**Architecture:** The root becomes a Next 16 app in `src/`, sharing the house preset with `template/`. `registry.json` declares items; `src/app/r/[name]/route.ts` serves them via `loadRegistryItem()` from `shadcn/registry`, rewriting this registry's own `registryDependencies` into absolute URLs built from the request origin. `template/` is a sibling directory of plain files and must be excluded from the root app's typecheck, lint and build.
+**Architecture:** A second Next 16 app lives in `site/`, a **sibling** of `template/`, sharing the house preset with it. `site/registry.json` declares items; `site/src/app/r/[name]/route.ts` serves them via `loadRegistryItem()` from `shadcn/registry`, rewriting this registry's own `registryDependencies` into absolute URLs built from the request origin.
+
+**Why `site/` and not the repository root:** Biome 2.5.13 rejects a nested root configuration. A `biome.json` at the repository root cannot coexist with `template/biome.json` — `files.includes` exclusions do not prevent discovery, scoping the CLI path does not either, `"root": false` in the nested config breaks the template once it is degit'd standalone, and `biome migrate` silently disables every lint rule. Two sibling directories never nest, so the problem disappears structurally.
 
 **Tech Stack:** Next.js 16, React 19, TypeScript 7, Tailwind v4, Biome, Vitest, `shadcn@4.21.0` as a **runtime** dependency.
 
@@ -12,9 +14,9 @@
 
 ## Global Constraints
 
-- **All Phase 2 work is at the repository root.** Do not modify anything inside `template/` — it is finished and verified.
-- **`template/` must be invisible to the root app.** Exclude it from `tsconfig.json`, from Biome, and from Next. A root `tsc` that walks into `template/` fails on its separate dependency tree.
-- **`shadcn@4.21.0` is a `dependency` at the root, NOT a devDependency.** The route handler imports `shadcn/registry` at runtime. Deliberately the opposite of `template/`, where nothing imports it.
+- **All Phase 2 work happens inside `site/`.** Do not modify anything inside `template/` — it is finished and verified — and do not create `package.json`, `biome.json` or `tsconfig.json` at the repository root. The repository root holds only `docs/`, `.github/`, `README.md`, `site/` and `template/`.
+- **`site/` and `template/` are independent sibling apps**: separate `package.json`, separate `node_modules`, separate lockfiles, separate Biome configs. There is no pnpm workspace and you must not create one.
+- **`shadcn@4.21.0` is a `dependency` in `site/`, NOT a devDependency.** The route handler imports `shadcn/registry` at runtime. Deliberately the opposite of `template/`, where nothing imports it.
 - **Design baseline is preset `b7lltUjfaE`** — the same one `template/` uses. Never hand-write theme tokens; there is no `registry:theme` item.
 - **After any `shadcn` command, run `pnpm format`.** Generated output is not Biome-formatted and will fail `pnpm lint`.
 - **Versions** match Phase 1: `next@16.3.5`, `react@19.3.0`, `react-dom@19.3.0`, `typescript@7.0.2`, `tailwindcss@4.3.3`, `@tailwindcss/postcss@4.3.3`, `@biomejs/biome@2.5.13`, `vitest@4.1.11`, `vite@8.3.0`, `cn@0.2.6`, `class-variance-authority@0.7.1`, `radix-ui@1.6.7`, `@phosphor-icons/react@2.1.10`.
@@ -24,43 +26,39 @@
 
 ---
 
-### Task 1: Scaffold the root app without disturbing `template/`
+### Task 1: Scaffold the `site/` app
 
 **Files:**
-- Create: `package.json`, `tsconfig.json`, `next.config.ts`, `biome.json`, `postcss.config.mjs`, `.gitignore`, `src/app/{layout.tsx,page.tsx,globals.css}`
+- Create: `site/{package.json,tsconfig.json,next.config.ts,biome.json,postcss.config.mjs,.gitignore}`, `site/src/app/{layout.tsx,page.tsx,globals.css}`
 
 **Interfaces:**
-- Produces: `pnpm dev`, `build`, `typecheck`, `lint`, `format`, `test` at the repository root.
+- Produces: `pnpm dev`, `build`, `typecheck`, `lint`, `format`, `test`, all run from inside `site/`.
 
-- [ ] **Step 1: Scaffold into a temp directory, then move it in**
-
-`create-next-app` refuses a non-empty directory, and the root already holds `docs/`, `template/` and `.github/`.
+- [ ] **Step 1: Scaffold directly into `site/`**
 
 ```bash
-cd /tmp && rm -rf bp-root
-pnpm dlx create-next-app@16.3.5 bp-root \
+cd /Users/khantthura/Documents/ProjectL/project-blueprint
+pnpm dlx create-next-app@16.3.5 site \
   --ts --tailwind --app --src-dir --turbopack \
   --import-alias "@/*" --use-pnpm --no-eslint --yes
-cd /Users/khantthura/Documents/ProjectL/project-blueprint
-cp -R /tmp/bp-root/src .
-cp /tmp/bp-root/{package.json,tsconfig.json,next.config.ts,postcss.config.mjs} .
-cat /tmp/bp-root/.gitignore >> .gitignore
-rm -rf /tmp/bp-root
 ```
 
-- [ ] **Step 2: Confirm the scaffold did not touch `template/`**
+`site/` does not exist yet, so `create-next-app` runs cleanly — no temp directory, no
+copying. This is simpler than the root-scaffold approach it replaces.
+
+- [ ] **Step 2: Confirm nothing outside `site/` changed**
 
 ```bash
-git status --short template/
+git status --short -- . ':!site'
 ```
 
-Expected: no output. **If anything under `template/` appears, run `git checkout -- template/` before continuing.**
+Expected: no output. **If anything under `template/` or the repository root appears, stop and report it.**
 
-- [ ] **Step 3: Replace `package.json`**
+- [ ] **Step 3: Replace `site/package.json`**
 
 ```json
 {
-  "name": "project-blueprint",
+  "name": "blueprint-site",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -97,22 +95,13 @@ Expected: no output. **If anything under `template/` appears, run `git checkout 
 }
 ```
 
-- [ ] **Step 4: Exclude `template/` in `tsconfig.json`**
-
-```json
-  "exclude": ["node_modules", "template", ".next"]
-```
-
-- [ ] **Step 5: Create root `biome.json`**
+- [ ] **Step 4: Create `site/biome.json`**
 
 ```json
 {
   "$schema": "https://biomejs.dev/schemas/2.5.13/schema.json",
   "vcs": { "enabled": true, "clientKind": "git", "useIgnoreFile": true },
-  "files": {
-    "ignoreUnknown": true,
-    "includes": ["**", "!template/**", "!.next/**", "!docs/**"]
-  },
+  "files": { "ignoreUnknown": true, "includes": ["**", "!.next/**"] },
   "formatter": {
     "enabled": true,
     "indentStyle": "space",
@@ -126,20 +115,35 @@ Expected: no output. **If anything under `template/` appears, run `git checkout 
 }
 ```
 
-- [ ] **Step 6: Install and verify the exclusion holds**
+No `!template/**` exclusion is needed — `template/` is a sibling, not a child, so Biome
+running inside `site/` never sees it. Keep `rules.recommended: true`; if any tool
+suggests `biome migrate`, do **not** run it: it rewrites this to `preset: "none"`, which
+silently disables every lint rule.
+
+- [ ] **Step 5: Install and verify**
 
 ```bash
-pnpm install
-pnpm typecheck && pnpm lint && pnpm build
+cd site && pnpm install && pnpm typecheck && pnpm lint && pnpm build
 ```
 
-Expected: all pass, with no file under `template/` mentioned. If `tsc` reports errors in `template/src/...`, Step 4 did not take effect.
+Expected: all three pass. `pnpm lint` in particular must report no configuration error —
+if it mentions a "nested root configuration", a stray `biome.json` was created at the
+repository root and must be deleted.
+
+- [ ] **Step 6: Confirm `template/` still passes on its own**
+
+```bash
+cd ../template && pnpm lint
+```
+
+Expected: passes. This proves the two apps are genuinely independent.
 
 - [ ] **Step 7: Commit**
 
 ```bash
+cd /Users/khantthura/Documents/ProjectL/project-blueprint
 git add -A
-git commit -m "feat(registry): scaffold the root preview site app"
+git commit -m "feat(site): scaffold the preview site app"
 ```
 
 ---
@@ -147,8 +151,10 @@ git commit -m "feat(registry): scaffold the root preview site app"
 ### Task 2: Apply the house preset and add the components
 
 **Files:**
-- Create: `components.json`, `src/components/ui/{button,dialog,dropdown-menu,sonner}.tsx`, `src/lib/utils.ts`
-- Modify: `src/app/globals.css`, `src/app/layout.tsx`, `package.json`
+- Create: `site/components.json`, `site/src/components/ui/{button,dialog,dropdown-menu,sonner}.tsx`, `site/src/lib/utils.ts`
+- Modify: `site/src/app/globals.css`, `site/src/app/layout.tsx`, `site/package.json`
+
+**All commands in this task run from inside `site/`.**
 
 **Interfaces:**
 - Produces: `Button` from `@/components/ui/button`, used by the gallery in Task 6.
@@ -207,7 +213,9 @@ git commit -m "feat(registry): apply preset b7lltUjfaE and add components"
 ### Task 3: The registry catalogue
 
 **Files:**
-- Create: `registry.json`, `registry/ui.json`
+- Create: `site/registry.json`, `site/registry/ui.json`
+
+**All paths are relative to `site/`.**
 
 **Interfaces:**
 - Produces: four items — `button`, `dialog`, `dropdown-menu`, `sonner` — loadable by `loadRegistryItem(name)`.
@@ -297,7 +305,9 @@ git commit -m "feat(registry): add the catalogue"
 ### Task 4: Absolute-URL rewriting, with tests
 
 **Files:**
-- Create: `src/lib/registry.ts`, `src/lib/registry.test.ts`, `vitest.config.mts`
+- Create: `site/src/lib/registry.ts`, `site/src/lib/registry.test.ts`, `site/vitest.config.mts`
+
+**All commands in this task run from inside `site/`.**
 
 **Interfaces:**
 - Produces: `absolutiseDependencies(item, origin, ownNames)` — returns a new item whose `registryDependencies` entries matching `ownNames` become `${origin}/r/${name}.json`, leaving everything else untouched.
@@ -430,7 +440,7 @@ git commit -m "feat(registry): rewrite own dependencies to absolute URLs"
 ### Task 5: The registry route handler
 
 **Files:**
-- Create: `src/app/r/[name]/route.ts`
+- Create: `site/src/app/r/[name]/route.ts`
 
 **Interfaces:**
 - Consumes: `absolutiseDependencies` from `@/lib/registry` (Task 4); `loadRegistry`, `loadRegistryItem`, `RegistryItemNotFoundError` from `shadcn/registry`.
@@ -497,7 +507,7 @@ git commit -m "feat(registry): serve items from a dynamic route handler"
 ### Task 6: The gallery
 
 **Files:**
-- Modify: `src/app/page.tsx`
+- Modify: `site/src/app/page.tsx`
 
 The scaffold's `src/app/layout.tsx` stays as the preset left it — it already carries the geist and instrument-sans font variables.
 
@@ -579,8 +589,8 @@ git commit -m "feat(gallery): list registry items and show button states"
 ### Task 7: CI for the registry, and deployment
 
 **Files:**
-- Create: `.github/workflows/registry.yml`
-- Modify: `README.md`
+- Create: `.github/workflows/registry.yml` (repository root)
+- Modify: `README.md` (repository root)
 
 - [ ] **Step 1: Create `.github/workflows/registry.yml`**
 
@@ -602,13 +612,20 @@ jobs:
         with:
           node-version: 24
           cache: pnpm
+          cache-dependency-path: site/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
+        working-directory: site
       - run: pnpm typecheck
+        working-directory: site
       - run: pnpm lint
+        working-directory: site
       - run: pnpm test
+        working-directory: site
       - run: pnpm build
+        working-directory: site
 
       - name: Every declared item must resolve when served
+        working-directory: site
         run: |
           pnpm start &
           for i in $(seq 1 30); do
@@ -678,9 +695,9 @@ pnpm dlx shadcn@latest apply b7lltUjfaE
 
 | Path | What |
 |---|---|
-| `src/app/page.tsx` | The component gallery |
-| `src/app/r/[name]` | Serves registry items |
-| `registry.json`, `registry/` | The catalogue |
+| `site/` | The gallery and registry host (deployed) |
+| `site/src/app/r/[name]` | Serves registry items |
+| `site/registry.json` | The catalogue |
 | `template/` | The app cloned by `degit` |
 | `docs/superpowers/` | Specs and plans |
 ````
@@ -688,8 +705,11 @@ pnpm dlx shadcn@latest apply b7lltUjfaE
 - [ ] **Step 4: Deploy**
 
 ```bash
-pnpm dlx vercel@latest --yes
+cd site && pnpm dlx vercel@latest --yes
 ```
+
+Set the Vercel project's **root directory to `site/`**. That is the only cost of the
+sibling layout, and it is a one-time project setting.
 
 Then verify against the real deployment:
 
@@ -711,9 +731,11 @@ git commit -m "ci: verify every registry item resolves when served"
 
 ## Done when
 
-- `pnpm typecheck && pnpm lint && pnpm test && pnpm build` passes at the repository root.
-- `template/` is untouched: `git status --short template/` is empty, and no root command reports a file inside it.
+- `cd site && pnpm typecheck && pnpm lint && pnpm test && pnpm build` passes.
+- `cd template && pnpm lint && pnpm build` still passes — the two apps are independent.
+- No `package.json`, `biome.json` or `tsconfig.json` exists at the repository root.
+- No Biome "nested root configuration" error from either app.
 - Every item in `registry.json` returns `200` from `/r/{name}.json` on the deployed site.
 - `/r/nope.json` returns `404`, not `500`.
-- The root `components.json` reports `radix-mira | taupe | phosphor | default-translucent` and has no `registries` key.
-- `shadcn` is in `dependencies` at the root and in `devDependencies` in `template/`.
+- `site/components.json` reports `radix-mira | taupe | phosphor | default-translucent` and has no `registries` key.
+- `shadcn` is in `dependencies` in `site/` and in `devDependencies` in `template/`.

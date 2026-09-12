@@ -151,19 +151,24 @@ One repository, two products: a **template** cloned to start an app, and a
 
 ```
 project-blueprint/
-├── src/
-│   ├── app/
-│   │   ├── (gallery)/          # preview site — the component gallery
-│   │   └── r/[name]/route.ts   # serves registry items, dynamically
-│   ├── components/ui/          # the components
-│   └── lib/, hooks/
-├── registry/                   # capability items (db, auth, ai, tables)
-├── registry.json               # root; composes the rest via `include`
+├── site/                       # the gallery + registry host (deployed)
+│   ├── src/app/page.tsx        # component gallery
+│   ├── src/app/r/[name]/       # serves registry items, dynamically
+│   ├── src/components/ui/      # the components
+│   ├── registry.json           # composes the rest via `include`
+│   └── registry/               # capability items (db, auth, ai, tables)
 ├── template/                   # degit target — becomes each new app
 │   ├── scripts/blueprint.mjs   # ships into every app
 │   └── scripts/blueprint.test.mjs
 └── docs/
 ```
+
+`site/` and `template/` are **siblings, never nested**. Biome 2.5.13 rejects a nested
+root configuration, and every escape is worse than the layout change: `files.includes`
+does not prevent config discovery, `"root": false` breaks the template once degit'd
+standalone, and `biome migrate` silently rewrites `rules.recommended` to `preset: "none"`,
+disabling all linting. Siblings each keep an independent config. The only cost is setting
+Vercel's root directory to `site/`.
 
 `scripts/blueprint.mjs` lives inside `template/`, so every generated app
 carries its own copy. Its source of truth is this repository; apps receive it
