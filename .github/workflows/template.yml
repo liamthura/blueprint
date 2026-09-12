@@ -26,7 +26,7 @@ jobs:
         run: pnpm exec playwright install --with-deps chromium
       - name: Typecheck, lint, test, build
         working-directory: ${{ runner.temp }}/app
-        run: pnpm typecheck && pnpm lint && pnpm test && pnpm build
+        run: pnpm typecheck && pnpm lint && pnpm test:scripts && pnpm test && pnpm build
 
   build-with-capabilities:
     runs-on: ubuntu-latest
@@ -43,6 +43,9 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: 24
+
+      - name: Run the create-cli test suite
+        run: node --test bin/*.test.mjs
 
       - name: Build and serve the registry
         working-directory: site
