@@ -12,7 +12,8 @@
 
 ## Global Constraints
 
-- Exact pinned versions, no ranges, everywhere a version is written: `drizzle-orm@0.45.2`, `drizzle-kit@0.31.10`, `pg@8.23.0`, `@types/pg@8.23.1`, `better-auth@1.7.4`, `@playwright/test@1.63.0`, `ai@7.0.99`, `@ai-sdk/react@4.0.102`, `@ai-sdk/openai@4.0.66`, `@tanstack/react-table@9.2.4`, `@tanstack/react-query@5.102.8`, `@t3-oss/env-nextjs@0.13.11`, `zod@4.6.2`, `shadcn@4.21.0`.
+- Exact pinned versions, no ranges, everywhere a version lands in a `package.json` or a registry item's `dependencies`/`devDependencies`. The one deliberate exception is `pnpm dlx @better-auth/cli@latest` in the `db:auth-schema` script: it is a one-shot command a developer runs by hand *after* upgrading better-auth, and its entire job is to be newer than the committed schema. `@better-auth/cli` is at 1.4.21 against better-auth 1.7.4, so pinning it would pin the generator to a stale major.
+- Exact pinned versions, no ranges, everywhere else: `drizzle-orm@0.45.2`, `drizzle-kit@0.31.10`, `pg@8.23.0`, `@types/pg@8.23.1`, `better-auth@1.7.4`, `@playwright/test@1.63.0`, `ai@7.0.99`, `@ai-sdk/react@4.0.102`, `@ai-sdk/openai@4.0.66`, `@tanstack/react-table@9.2.4`, `@tanstack/react-query@5.102.8`, `@t3-oss/env-nextjs@0.13.11`, `zod@4.6.2`, `shadcn@4.21.0`.
 - zod 4 syntax: `z.url()`, not `z.string().url()`.
 - Icon library is `phosphor` (`@phosphor-icons/react`). Never import `lucide-react`.
 - Class-name helper is `cn` from the `cn` package: `import { cn } from "cn"` is wrong — the template's `src/lib/utils.ts` re-exports it, so components import `{ cn } from "@/lib/utils"`.
