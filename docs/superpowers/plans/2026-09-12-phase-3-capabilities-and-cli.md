@@ -628,7 +628,7 @@ cd site && pnpm build && (pnpm start &) && sleep 5 && \
 
 Expected: `db 5 src/lib/db/index.ts src/lib/db/schema.ts src/lib/db/env.ts drizzle.config.ts docker-compose.yml` then `inlined: true`. The second line is the one that matters — `loadRegistryItem` reading the file off disk is the entire reason these are real `.ts` files rather than JSON strings.
 
-Kill the server afterwards: `pkill -f "next start"`.
+Kill the server afterwards: `pkill -f "next-server" || pkill -f "next start"`.
 
 - [ ] **Step 8: Commit**
 
@@ -965,7 +965,7 @@ cd site && pnpm build && (pnpm start &) && sleep 5 && \
 
 Expected: the ten targets above, `registryDependencies: none`, `inlined: true`.
 
-Kill the server: `pkill -f "next start"`.
+Kill the server: `pkill -f "next-server" || pkill -f "next start"`.
 
 - [ ] **Step 13: Commit**
 
@@ -1135,7 +1135,7 @@ cd site && pnpm build && (pnpm start &) && sleep 5 && \
 
 Expected: the three targets, and `deps: none`. A capability that lists registry dependencies has coupled itself to the optional component registry — that is the defect this check exists to catch.
 
-Kill the server: `pkill -f "next start"`.
+Kill the server: `pkill -f "next-server" || pkill -f "next start"`.
 
 - [ ] **Step 6: Commit**
 
@@ -1403,7 +1403,7 @@ cd site && grep -c 'registry/db/index.ts' .next/server/app/r/\[name\]/route.js.n
 
 Expected: `1` or more. A `0` means `outputFileTracingIncludes` did not take, and every capability request would 500 in production while passing here.
 
-Kill the server: `pkill -f "next start"`.
+Kill the server: `pkill -f "next-server" || pkill -f "next start"`.
 
 - [ ] **Step 4: Commit**
 
@@ -1858,7 +1858,7 @@ pnpm typecheck && pnpm lint && pnpm build
 
 Expected: all PASS. This is the first moment in Phase 3 that any capability's types are checked — treat a failure here as a defect in Tasks 2–5, fix it there, and rerun.
 
-Kill the server: `pkill -f "next start"`.
+Kill the server: `pkill -f "next-server" || pkill -f "next start"`.
 
 - [ ] **Step 3: Commit**
 
