@@ -1,0 +1,27 @@
+name: Template builds
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build-template:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - name: Copy template to a clean directory
+        run: cp -R template "${RUNNER_TEMP}/app"
+      - name: Install
+        working-directory: ${{ runner.temp }}/app
+        run: pnpm install --no-frozen-lockfile
+      - name: Install browsers
+        working-directory: ${{ runner.temp }}/app
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Typecheck, lint, test, build
+        working-directory: ${{ runner.temp }}/app
+        run: pnpm typecheck && pnpm lint && pnpm test && pnpm build
