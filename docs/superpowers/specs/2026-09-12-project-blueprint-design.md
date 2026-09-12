@@ -107,10 +107,16 @@ The tradeoff is losing `eslint-config-next`'s Next-specific rules; accepted
 because no existing project carries meaningful ESLint configuration. Biome also
 supplies formatting, which no React project here currently has.
 
-### Testing: Vitest browser mode via Playwright
+### Testing: Vitest browser mode in the floor, Playwright with `auth`
 
-One toolchain for unit and end-to-end, no jsdom. Vitest is the community
-default for new projects; Playwright has overtaken Cypress.
+Vitest browser mode, Playwright-backed, for component tests — real browser, no
+jsdom. Vitest is the community default for new projects.
+
+Browser mode is **not** end-to-end: it does not drive a running app through a
+sign-in flow across routes. So `@playwright/test` is not in the floor; it
+arrives with the `auth` capability, which is the first point there is a flow
+worth driving end to end. `project-lazybee` carries both packages for exactly
+this reason.
 
 ### Settled house rules
 
@@ -127,12 +133,13 @@ One repository, two products: a **template** cloned to start an app, and a
 ```
 project-blueprint/
 ├── src/
-│   ├── app/                    # preview site — the component gallery
+│   ├── app/
+│   │   ├── (gallery)/          # preview site — the component gallery
+│   │   └── r/[name]/route.ts   # serves registry items, dynamically
 │   ├── components/ui/          # the components
 │   └── lib/, hooks/
 ├── registry/                   # capability items (db, auth, ai, tables)
 ├── registry.json               # root; composes the rest via `include`
-├── public/r/                   # built output, committed
 ├── template/                   # degit target — becomes each new app
 │   ├── scripts/blueprint.mjs   # ships into every app
 │   └── scripts/blueprint.test.mjs
@@ -144,8 +151,8 @@ carries its own copy. Its source of truth is this repository; apps receive it
 at `degit` time and do not update it afterwards.
 
 The repository deploys to Vercel. The deployment is simultaneously the
-component gallery and the registry host, at whatever URL it is deployed to.
-No separate infrastructure.
+component gallery and the registry host, and it serves registry items from a
+route handler rather than from pre-built files. No separate infrastructure.
 
 ### The template
 
@@ -157,10 +164,15 @@ Sized for a landing page and nothing more:
 - `.github/workflows/ci.yml` — typecheck, lint, test, build
 - **Sentry**
 
-Sentry is a deliberate exception to "a landing page needs nothing". It is two
-files and one environment variable, and it is the single thing absent from all
-fifteen existing projects. Made optional, it stays absent — "later" is why
+Sentry is a deliberate exception to "a landing page needs nothing". It costs
+`instrumentation.ts`, client/server/edge configs and `withSentryConfig` — more
+than trivial, and still worth it, because it is the single thing absent from
+all fifteen existing projects. Made optional, it stays absent; "later" is why
 there is no error tracking today.
+
+**The DSN is `.optional()` in the env schema and Sentry no-ops without it.**
+A fresh clone therefore builds, tests and deploys with an empty `.env`, which
+is what makes the "no environment variables" promise in the growth path true.
 
 The template ships **vanilla**: no `registries` key in `components.json`, no
 coupling to this repository. An app built from it keeps working if this
@@ -216,33 +228,34 @@ Opting in is one command:
 pnpm dlx shadcn@latest registry add @blueprint=<registry-url>/r/{name}.json
 ```
 
-Capability items use **absolute URLs in `registryDependencies`**, not
-namespaced names. `shadcn add <url>` then resolves with nothing configured, so
-the growth path does not depend on the optional component registry.
+Capability items resolve `registryDependencies` to **absolute URLs**, not
+namespaced names — interpolated per request, as below. `shadcn add <url>` then
+works with nothing configured, so the growth path does not depend on the
+optional component registry.
 
-### Hostname is stamped at build, not written by hand
+### The registry is served dynamically, so the hostname never gets written down
 
-Absolute URLs would normally bake the hostname into published JSON. Instead,
-source items carry the sentinel `{{REGISTRY_URL}}`, and the build stamps it:
+An earlier draft pre-built items to a committed `public/r/`, stamping the
+hostname in at build time. That does not work: a committed artifact cannot hold
+an environment-dependent value while CI also checks it for drift — the local
+build writes `localhost`, the CI build writes the production URL, and the check
+fails on every run.
 
-```
-shadcn build && node scripts/stamp-urls.mjs
-```
+Instead, shadcn supports serving a registry from a route handler via
+`loadRegistry()` and `loadRegistryItem()`, with no pre-build step.
+`src/app/r/[name]/route.ts` reads the item and interpolates
+`new URL(request.url).origin` into `registryDependencies` as it responds.
 
-`stamp-urls.mjs` rewrites the sentinel across `public/r/*.json`. It resolves
-the value in this order:
+**The registry learns its own hostname from the request.** Nothing is
+configured, nothing is stamped, nothing is committed, and moving to a custom
+domain requires no action at all — the next request answers from the new host.
 
-1. `REGISTRY_URL` environment variable, if set
-2. `VERCEL_PROJECT_PRODUCTION_URL`, which Vercel provides at build time
-3. `http://localhost:3000` for local development
+This removes the sentinel, the stamping script, the committed build output and
+the CI drift check. It is less machinery than the design it replaces.
 
-So the registry **stamps itself with wherever it is deployed**. No hostname is
-configured anywhere by default, moving to a custom domain is a redeploy, and
-moving off Vercel entirely is one environment variable. Roughly fifteen lines.
-
-Generated apps resolve the same value from a `blueprint.registry` field in
+Generated apps store their registry URL in a `blueprint.registry` field in
 their own `package.json`, written once by `blueprint init`. An app that needs
-to point somewhere else edits one field.
+to point elsewhere edits one field.
 
 ### The `blueprint` script
 
@@ -272,12 +285,24 @@ convenience.
 
 ## Testing and CI
 
-**Template CI:** typecheck, `biome check`, `vitest run`, `next build`.
+**CI shipped in the template** (runs in each generated app): typecheck,
+`biome check`, `vitest run`, `next build`. Vitest runs with
+`passWithNoTests` — a fresh clone has three upstream components and no tests,
+and CI failing on the first push would make the template feel broken.
 
-**This repository's CI** additionally runs `shadcn build` and **fails if
-`public/r/` has an uncommitted diff.** Every downstream project pulls from this
-output; a forgotten rebuild would silently serve stale JSON to all of them.
-This repository's CI is load-bearing in a way no existing project's is.
+**This repository's CI** runs two jobs:
+
+1. Typecheck, lint, test and build the preview site, and assert every item in
+   `registry.json` resolves — a request to `/r/{name}.json` returns valid JSON
+   for each declared item.
+2. **Build the template.** `template/` has its own `package.json` and is never
+   installed here, so nothing otherwise verifies it compiles. This job copies
+   it to a temp directory, installs, typechecks and builds. Without it, a
+   broken template is discovered the next time a project starts, potentially
+   months later.
+
+This repository's CI is load-bearing in a way no existing project's is: every
+downstream app pulls from it.
 
 **`scripts/blueprint.test.mjs`** — one file, not a suite. Covers capability
 resolution, `package.json` script merging against a fixture, and that a repeat
@@ -286,7 +311,7 @@ is worth exactly one test.
 
 ## Growth path
 
-1. `npx degit khantthura/project-blueprint/template my-app` — landing page,
+1. `npx degit <owner>/project-blueprint/template my-app` — landing page,
    deploys immediately, no database, no environment variables.
 2. `pnpm blueprint init` — name, registry choice, optional bundle.
 3. Month 3, needs data: `pnpm blueprint add db`.
@@ -294,6 +319,24 @@ is worth exactly one test.
 5. Month 9, needs AI: `pnpm blueprint add ai`.
 
 No step restructures what came before.
+
+## Implementation phases
+
+Three plans, not one. Each phase is independently useful and does not depend on
+those after it.
+
+**Phase 1 — template and CI.** Next, Tailwind, Biome, Vitest, Sentry, env
+validation, the template-build CI job. Delivers most of what is missing from
+the existing fifteen projects today, and can be used to start apps before
+either later phase exists.
+
+**Phase 2 — preview site, registry, theme.** The gallery, the dynamic route
+handler, `registry.json`, and the `registry:theme` item. Components become
+shareable. Seed `registry:ui` only with components already customised the same
+way twice.
+
+**Phase 3 — capabilities and the `blueprint` script.** `db`, `auth`, `ai`,
+`tables`, the `saas` bundle, `blueprint.mjs` and its test. The growth path.
 
 ## Risks
 
@@ -309,10 +352,11 @@ second-customisation rule, which keeps the owned surface small.
 currently says. A broken `button` reaches the next `add` in any project. CI on
 this repository is the only control.
 
-**Sentinel stamping is a build step that can be skipped.** If `shadcn build`
-runs without `stamp-urls.mjs`, published items contain a literal
-`{{REGISTRY_URL}}` and fail for every consumer. CI runs them as one command and
-fails on an uncommitted `public/r/` diff, which catches it.
+**The registry is now a running service, not static files.** Serving items
+from a route handler means the preview site being down takes the registry with
+it. Acceptable — `shadcn add` is not in any hot path, and a failed add is
+retried rather than silently wrong — but it is a live dependency where the
+previous design had none.
 
 **Drizzle's stable line is stale.** `latest` has not moved since March 2026
 while v1 sits in RC. If v1 ships with breaking changes, migration cost lands on
@@ -335,8 +379,8 @@ Vercel and Cloudflare — cheap to reverse.
 None blocking. Both items previously listed here — the registry hostname and
 the repository name — turned out to be soft:
 
-- **Hostname** resolves itself at build time (see "Hostname is stamped at
-  build"). Deploy first, pick a domain whenever.
+- **Hostname** is read from the incoming request (see "The registry is served
+  dynamically"). Deploy first, pick a domain whenever, change it later.
 - **Repository owner/name** appears only in the `degit` command in the README.
   It is not baked into any published artifact, so renaming the repository
   breaks nothing that already exists.
