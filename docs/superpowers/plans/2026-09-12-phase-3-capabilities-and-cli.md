@@ -642,6 +642,7 @@ git commit -m "feat(registry): db capability — drizzle, pg, migrations, docker
 ## Task 3: The `auth` capability
 
 **Files:**
+- Modify: `site/tsconfig.json`, `site/next.config.ts` (moved here from Task 6 — Task 2 proved the site cannot build until `registry/` leaves the typecheck, and every verification step below depends on a building site)
 - Create: `site/registry/auth/auth.ts`, `auth-env.ts`, `auth-client.ts`, `auth-schema.ts`, `route.ts`, `auth-form.tsx`, `sign-in-page.tsx`, `sign-up-page.tsx`, `playwright.config.ts`, `sign-up.spec.ts`
 - Modify: `site/registry.json`
 
@@ -649,7 +650,36 @@ git commit -m "feat(registry): db capability — drizzle, pg, migrations, docker
 - Consumes: `db` from Task 2 (`import { db } from "@/lib/db"`), and the `auth` entry of `CAPABILITIES` — scripts `db:auth-schema`, `test:e2e`; env `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`.
 - Produces: `src/lib/auth.ts` exporting `auth`, `src/lib/auth-client.ts` exporting `authClient`, `signIn`, `signUp`, `signOut`, `useSession`.
 
-- [ ] **Step 1: Create `site/registry/auth/auth-env.ts`**
+- [ ] **Step 1: Exclude the capability sources from the site's typecheck**
+
+Capability files import from `@/lib/db`, `@/lib/auth` and packages the site does not install; they are payloads, not site code. Biome still lints and formats them, because it needs no module resolution. Their types are proved by Task 8, which compiles them inside a real generated app — the only place those imports actually resolve.
+
+In `site/tsconfig.json`, change the `exclude` array:
+
+```json
+  "exclude": ["node_modules", "registry"]
+```
+
+- [ ] **Step 2: Include the capability sources in the runtime trace**
+
+`loadRegistryItem` reads these files with `readFile` at request time, from inside a dependency, so Next's tracer cannot see them. Without this the route handler 500s on Vercel while passing locally — the same defect Phase 2's final review caught for `src/components/ui/**`.
+
+In `site/next.config.ts`:
+
+```ts
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
+  outputFileTracingIncludes: {
+    "/": ["./registry.json", "./src/components/ui/**", "./registry/**"],
+    "/r/[name]": ["./registry.json", "./src/components/ui/**", "./registry/**"],
+  },
+};
+
+export default nextConfig;
+```
+
+- [ ] **Step 3: Create `site/registry/auth/auth-env.ts`**
 
 ```ts
 import { createEnv } from "@t3-oss/env-nextjs";
@@ -668,7 +698,7 @@ export const authEnv = createEnv({
 });
 ```
 
-- [ ] **Step 2: Create `site/registry/auth/auth-schema.ts`**
+- [ ] **Step 4: Create `site/registry/auth/auth-schema.ts`**
 
 better-auth's four core tables, hand-written against 1.7.4. `pnpm db:auth-schema` regenerates this file after a better-auth upgrade; it is committed rather than generated on install so a fresh project typechecks and migrates without an extra step.
 
@@ -726,7 +756,7 @@ export const verification = pgTable("verification", {
 });
 ```
 
-- [ ] **Step 3: Create `site/registry/auth/auth.ts`**
+- [ ] **Step 5: Create `site/registry/auth/auth.ts`**
 
 Passing `schema` explicitly is what keeps `auth` decoupled from `db`: the user's own `src/lib/db/schema.ts` is never edited by this capability.
 
@@ -747,7 +777,7 @@ export const auth = betterAuth({
 });
 ```
 
-- [ ] **Step 4: Create `site/registry/auth/auth-client.ts`**
+- [ ] **Step 6: Create `site/registry/auth/auth-client.ts`**
 
 ```ts
 "use client";
@@ -759,7 +789,7 @@ export const authClient = createAuthClient();
 export const { signIn, signUp, signOut, useSession } = authClient;
 ```
 
-- [ ] **Step 5: Create `site/registry/auth/route.ts`**
+- [ ] **Step 7: Create `site/registry/auth/route.ts`**
 
 ```ts
 import { toNextJsHandler } from "better-auth/next-js";
@@ -768,7 +798,7 @@ import { auth } from "@/lib/auth";
 export const { GET, POST } = toNextJsHandler(auth);
 ```
 
-- [ ] **Step 6: Create `site/registry/auth/auth-form.tsx`**
+- [ ] **Step 8: Create `site/registry/auth/auth-form.tsx`**
 
 One component with a `mode`, so the two pages are thin. Two near-identical page files would be the duplication a reviewer should reject.
 
@@ -836,7 +866,7 @@ export function AuthForm({ mode }: { mode: "sign-in" | "sign-up" }) {
 }
 ```
 
-- [ ] **Step 7: Create the two pages**
+- [ ] **Step 9: Create the two pages**
 
 `site/registry/auth/sign-in-page.tsx`:
 
@@ -858,7 +888,7 @@ export default function SignUpPage() {
 }
 ```
 
-- [ ] **Step 8: Create the Playwright config and one end-to-end test**
+- [ ] **Step 10: Create the Playwright config and one end-to-end test**
 
 Browser-mode component tests cannot drive a sign-up across routes; this is the first flow in the stack that needs a running app, which is exactly why `@playwright/test` arrives here rather than in the template floor.
 
@@ -897,7 +927,7 @@ test("a new account can be created and lands signed in", async ({ page }) => {
 });
 ```
 
-- [ ] **Step 9: Declare the item in `site/registry.json`**
+- [ ] **Step 11: Declare the item in `site/registry.json`**
 
 ```json
     {
@@ -924,7 +954,7 @@ test("a new account can be created and lands signed in", async ({ page }) => {
 
 Note there is **no `registryDependencies: ["db"]`** here, by the Global Constraints. `resolveCapabilities(["auth"])` returns `["db", "auth"]`, and both URLs go to `shadcn add` in that order.
 
-- [ ] **Step 10: Verify the item resolves and the targets are right**
+- [ ] **Step 12: Verify the item resolves and the targets are right**
 
 Run:
 
@@ -937,10 +967,10 @@ Expected: the ten targets above, `registryDependencies: none`, `inlined: true`.
 
 Kill the server: `pkill -f "next start"`.
 
-- [ ] **Step 11: Commit**
+- [ ] **Step 13: Commit**
 
 ```bash
-git add site/registry/auth site/registry.json
+git add site/tsconfig.json site/next.config.ts site/registry/auth site/registry.json
 git commit -m "feat(registry): auth capability — better-auth, schema, sign-in flow, e2e"
 ```
 
@@ -1299,44 +1329,15 @@ git commit -m "feat(registry): tables and tests capabilities"
 ## Task 6: Wire the capabilities into the site
 
 **Files:**
-- Modify: `site/tsconfig.json`
-- Modify: `site/next.config.ts`
 - Modify: `site/src/app/page.tsx`
+
+The `tsconfig.json` and `next.config.ts` edits this task used to own moved into Task 3: every capability task after the first needs a site that builds before it can verify its own item.
 
 **Interfaces:**
 - Consumes: the five `registry:lib` items declared in Tasks 2–5.
 - Produces: nothing consumed by a later task.
 
-- [ ] **Step 1: Exclude the capability sources from the site's typecheck**
-
-Capability files import from `@/lib/db`, `@/lib/auth` and packages the site does not install; they are payloads, not site code. Biome still lints and formats them, because it needs no module resolution. Their types are proved by Task 8, which compiles them inside a real generated app — the only place those imports actually resolve.
-
-In `site/tsconfig.json`, change the `exclude` array:
-
-```json
-  "exclude": ["node_modules", "registry"]
-```
-
-- [ ] **Step 2: Include the capability sources in the runtime trace**
-
-`loadRegistryItem` reads these files with `readFile` at request time, from inside a dependency, so Next's tracer cannot see them. Without this the route handler 500s on Vercel while passing locally — the same defect Phase 2's final review caught for `src/components/ui/**`.
-
-In `site/next.config.ts`:
-
-```ts
-import type { NextConfig } from "next";
-
-const nextConfig: NextConfig = {
-  outputFileTracingIncludes: {
-    "/": ["./registry.json", "./src/components/ui/**", "./registry/**"],
-    "/r/[name]": ["./registry.json", "./src/components/ui/**", "./registry/**"],
-  },
-};
-
-export default nextConfig;
-```
-
-- [ ] **Step 3: Split the gallery by item type**
+- [ ] **Step 1: Split the gallery by item type**
 
 The gallery currently renders every item as a component card with a `@blueprint/<name>` install line. Capabilities are not added that way — they come through `pnpm blueprint add`. In `site/src/app/page.tsx`, replace the single `items` binding and the single `<ul>`:
 
@@ -1381,7 +1382,7 @@ Keep the existing `<ul className="mt-10 space-y-4">` exactly as it is but map ov
       </section>
 ```
 
-- [ ] **Step 4: Verify the site still passes and the gallery renders both lists**
+- [ ] **Step 2: Verify the site still passes and the gallery renders both lists**
 
 Run:
 
@@ -1392,7 +1393,7 @@ cd site && pnpm typecheck && pnpm lint && pnpm test && pnpm build && (pnpm start
 
 Expected: typecheck/lint/test/build all PASS, and the count is **9** — four `registry:ui` cards plus five capability cards. Count `<li ` elements, not name strings: the page is one minified line, so `grep -c` would report 1, and component names appear in both the markup and the RSC payload.
 
-- [ ] **Step 5: Verify the trace actually caught the capability sources**
+- [ ] **Step 3: Verify the trace actually caught the capability sources**
 
 Run:
 
@@ -1404,10 +1405,10 @@ Expected: `1` or more. A `0` means `outputFileTracingIncludes` did not take, and
 
 Kill the server: `pkill -f "next start"`.
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 4: Commit**
 
 ```bash
-git add site/tsconfig.json site/next.config.ts site/src/app/page.tsx
+git add site/src/app/page.tsx
 git commit -m "feat(site): serve and list capabilities alongside components"
 ```
 
