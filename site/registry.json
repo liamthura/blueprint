@@ -35,6 +35,38 @@
       "description": "Toast wrapper with the blueprint defaults.",
       "dependencies": ["sonner", "next-themes", "@phosphor-icons/react"],
       "files": [{ "path": "src/components/ui/sonner.tsx", "type": "registry:ui" }]
+    },
+    {
+      "name": "db",
+      "type": "registry:lib",
+      "title": "Database",
+      "description": "Drizzle ORM on Postgres through node-postgres, with a local Docker database and migrations.",
+      "dependencies": [
+        "drizzle-orm@0.45.2",
+        "pg@8.23.0",
+        "@t3-oss/env-nextjs@0.13.11",
+        "zod@4.6.2"
+      ],
+      "devDependencies": ["drizzle-kit@0.31.10", "@types/pg@8.23.1"],
+      "files": [
+        { "path": "registry/db/index.ts", "type": "registry:lib", "target": "src/lib/db/index.ts" },
+        {
+          "path": "registry/db/schema.ts",
+          "type": "registry:lib",
+          "target": "src/lib/db/schema.ts"
+        },
+        { "path": "registry/db/env.ts", "type": "registry:lib", "target": "src/lib/db/env.ts" },
+        {
+          "path": "registry/db/drizzle.config.ts",
+          "type": "registry:file",
+          "target": "drizzle.config.ts"
+        },
+        {
+          "path": "registry/db/docker-compose.yml",
+          "type": "registry:file",
+          "target": "docker-compose.yml"
+        }
+      ]
     }
   ]
 }
