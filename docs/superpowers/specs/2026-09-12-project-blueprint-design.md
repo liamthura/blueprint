@@ -131,7 +131,8 @@ The template defaults to **`phosphor`**, matching the most recent existing
 project (`project-lazybee`). The residual cost is small and worth naming:
 Lucide is shadcn's default and runs 73M weekly downloads against Phosphor's
 2.7M, so example code pasted from blogs and upstream blocks will assume Lucide
-imports. The CLI covers `add`; hand-pasted code does not.
+imports. The CLI covers `add`; hand-pasted code does not. Preset `b7lltUjfaE`
+sets `phosphor` independently, so this is settled in one place.
 
 **What actually matters is picking one.** `project-lighthouse` currently
 carries both `lucide-react` and `@phosphor-icons/react` — that is the defect,
@@ -200,9 +201,31 @@ repository is archived.
 
 Three kinds of item.
 
-**`registry:theme`, built first.** CSS variables for light/dark, radius, fonts.
-Customising twelve components before establishing tokens produces twelve
-customisations and no system.
+**No `registry:theme` item. The shadcn preset is the theme.**
+
+The design baseline is preset **`b7lltUjfaE`**, applied with
+`pnpm dlx shadcn@latest apply b7lltUjfaE`. Decoded:
+
+| | |
+|---|---|
+| style | `radix-mira` |
+| baseColor | `taupe` |
+| theme / chartColor | `green` / `emerald` |
+| iconLibrary | `phosphor` |
+| font / heading | `geist` / `instrument-sans` |
+| radius | `none` |
+| menuColor / menuAccent | `default-translucent` / `subtle` |
+
+An earlier draft specified a hand-written `registry:theme` item carrying
+invented oklch values. The preset supersedes it completely and covers more —
+fonts and chart colours included — while staying generated rather than
+maintained by hand. A hand-written theme item would only drift from it.
+
+Consequences: the template ships the preset applied. A foreign project that
+pulls a `@blueprint` component and has not applied the preset still works,
+because the component references the standard shadcn variables every shadcn
+project defines; it simply renders in that project's own colours. Making it
+look like a blueprint project is one command, not a registry item.
 
 **`registry:ui` — the components.** Seeded with the ones already customised
 identically in more than one project: `button`, `dropdown-menu`, `dialog`, and

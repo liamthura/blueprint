@@ -198,8 +198,17 @@ git commit -m "feat(template): replace ESLint with Biome"
 - [ ] **Step 1: Initialise shadcn**
 
 ```bash
-cd template && pnpm dlx shadcn@4.21.0 init --yes --base-color neutral
+cd template && pnpm dlx shadcn@4.21.0 init --preset b7lltUjfaE --yes
 ```
+
+Preset `b7lltUjfaE` is the house baseline — `radix-mira` style, `taupe` base,
+green theme, phosphor icons, geist/instrument-sans fonts, zero radius. It sets
+`iconLibrary` too, so Step 1b below is a verification rather than a change.
+
+Afterwards, run `pnpm format` — the preset's generated output is not
+Biome-formatted and will otherwise fail `pnpm lint`. Also delete the empty
+`"registries": {}` key it writes to `components.json`; the template must ship
+with no registry coupling.
 
 - [ ] **Step 1b: Set the icon library**
 
