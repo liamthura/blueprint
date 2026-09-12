@@ -67,6 +67,62 @@
           "target": "docker-compose.yml"
         }
       ]
+    },
+    {
+      "name": "auth",
+      "type": "registry:lib",
+      "title": "Authentication",
+      "description": "better-auth with email and password, on the db capability's Drizzle instance.",
+      "dependencies": ["better-auth@1.7.4", "@t3-oss/env-nextjs@0.13.11", "zod@4.6.2"],
+      "devDependencies": ["@playwright/test@1.63.0"],
+      "files": [
+        { "path": "registry/auth/auth.ts", "type": "registry:lib", "target": "src/lib/auth.ts" },
+        {
+          "path": "registry/auth/auth-env.ts",
+          "type": "registry:lib",
+          "target": "src/lib/auth-env.ts"
+        },
+        {
+          "path": "registry/auth/auth-client.ts",
+          "type": "registry:lib",
+          "target": "src/lib/auth-client.ts"
+        },
+        {
+          "path": "registry/auth/auth-schema.ts",
+          "type": "registry:lib",
+          "target": "src/lib/db/auth-schema.ts"
+        },
+        {
+          "path": "registry/auth/route.ts",
+          "type": "registry:file",
+          "target": "src/app/api/auth/[...all]/route.ts"
+        },
+        {
+          "path": "registry/auth/auth-form.tsx",
+          "type": "registry:component",
+          "target": "src/components/auth-form.tsx"
+        },
+        {
+          "path": "registry/auth/sign-in-page.tsx",
+          "type": "registry:file",
+          "target": "src/app/sign-in/page.tsx"
+        },
+        {
+          "path": "registry/auth/sign-up-page.tsx",
+          "type": "registry:file",
+          "target": "src/app/sign-up/page.tsx"
+        },
+        {
+          "path": "registry/auth/playwright.config.ts",
+          "type": "registry:file",
+          "target": "playwright.config.ts"
+        },
+        {
+          "path": "registry/auth/sign-up.spec.ts",
+          "type": "registry:file",
+          "target": "e2e/sign-up.spec.ts"
+        }
+      ]
     }
   ]
 }

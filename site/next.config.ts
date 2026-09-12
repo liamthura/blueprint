@@ -2,8 +2,8 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
-    "/": ["./registry.json", "./src/components/ui/**"],
-    "/r/[name]": ["./registry.json", "./src/components/ui/**"],
+    "/": ["./registry.json", "./src/components/ui/**", "./registry/**"],
+    "/r/[name]": ["./registry.json", "./src/components/ui/**", "./registry/**"],
   },
 };
 
