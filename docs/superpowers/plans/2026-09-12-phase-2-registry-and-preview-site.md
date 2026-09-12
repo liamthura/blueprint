@@ -264,6 +264,7 @@ git commit -m "feat(registry): apply preset b7lltUjfaE and add components"
       "type": "registry:ui",
       "title": "Dialog",
       "description": "Dialog with the blueprint defaults.",
+      "registryDependencies": ["button"],
       "dependencies": ["cn", "radix-ui", "@phosphor-icons/react"],
       "files": [{ "path": "src/components/ui/dialog.tsx", "type": "registry:ui" }]
     },
@@ -280,7 +281,7 @@ git commit -m "feat(registry): apply preset b7lltUjfaE and add components"
       "type": "registry:ui",
       "title": "Sonner",
       "description": "Toast wrapper with the blueprint defaults.",
-      "dependencies": ["sonner", "next-themes"],
+      "dependencies": ["sonner", "next-themes", "@phosphor-icons/react"],
       "files": [{ "path": "src/components/ui/sonner.tsx", "type": "registry:ui" }]
     }
   ]
@@ -288,6 +289,12 @@ git commit -m "feat(registry): apply preset b7lltUjfaE and add components"
 ```
 
 No item declares a `registryDependencies` on a theme, because there is no theme item — the preset is the theme. A consumer who has not applied the preset still gets a working component; it simply renders in their own colours.
+
+**`dialog` declares `registryDependencies: ["button"]`** because `dialog.tsx` contains
+`import { Button } from "@/components/ui/button"`. Without it, a consumer installing
+`@blueprint/dialog` into a project without a button component gets an unresolvable
+import. This is the only cross-reference among the four — verified by grepping
+`@/components/ui/` across all of them — and it is what Task 4's URL rewriting operates on.
 
 - [ ] **Step 3: Verify both loaders work**
 
@@ -324,7 +331,10 @@ git commit -m "feat(registry): add the catalogue"
 **Interfaces:**
 - Produces: `absolutiseDependencies(item, origin, ownNames)` — returns a new item whose `registryDependencies` entries matching `ownNames` become `${origin}/r/${name}.json`, leaving everything else untouched.
 
-This is the only real logic in Phase 2, so it gets the only test. Note that **nothing in Phase 2 exercises it end to end** — no current item depends on another. It is proven by these unit tests now, and for real in Phase 3, when `auth` depends on `db`. Building it now avoids reopening the route handler later.
+This is the only real logic in Phase 2, so it gets the only test. It **is** exercised end
+to end: `dialog` declares `registryDependencies: ["button"]`, so `/r/dialog.json` must
+serve `button` as an absolute URL on the requesting host. Task 5 Step 2 checks exactly
+that.
 
 - [ ] **Step 1: Create `vitest.config.mts`**
 
@@ -502,10 +512,15 @@ for n in button dialog dropdown-menu sonner registry; do
   printf "%-16s %s\n" "$n" "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:3000/r/$n.json)"
 done
 printf "%-16s %s\n" "missing" "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:3000/r/nope.json)"
+echo "--- dialog's button dependency must be an absolute URL on this host ---"
+curl -s http://localhost:3000/r/dialog.json \
+  | grep -o "http://localhost:3000/r/button.json" || echo "REWRITE FAILED"
 kill %1
 ```
 
-Expected: five `200`s and `missing 404`. **A `500` for `missing` means the error branch is wrong** — the point of catching `RegistryItemNotFoundError` is that an unknown name is a client error, not a server fault.
+Expected: five `200`s, `missing 404`, and the rewritten absolute URL printed. **The
+rewrite line is the end-to-end proof of Task 4's logic** — if it prints `REWRITE FAILED`,
+either `absolutiseDependencies` or its wiring in the handler is wrong. **A `500` for `missing` means the error branch is wrong** — the point of catching `RegistryItemNotFoundError` is that an unknown name is a client error, not a server fault.
 
 - [ ] **Step 3: Commit**
 
@@ -749,5 +764,6 @@ git commit -m "ci: verify every registry item resolves when served"
 - No Biome "nested root configuration" error from either app.
 - Every item in `registry.json` returns `200` from `/r/{name}.json` on the deployed site.
 - `/r/nope.json` returns `404`, not `500`.
+- `/r/dialog.json` lists its `button` dependency as an absolute URL on the deployment's own hostname.
 - `site/components.json` reports `radix-mira | taupe | phosphor | default-translucent` and has no `registries` key.
 - `shadcn` is in `dependencies` in `site/` and in `devDependencies` in `template/`.
