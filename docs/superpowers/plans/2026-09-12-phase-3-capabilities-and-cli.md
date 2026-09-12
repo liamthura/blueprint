@@ -213,8 +213,10 @@ test("the tests capability restores exactly what stripTests removes", () => {
 
 - [ ] **Step 2: Run it to make sure it fails**
 
-Run: `cd template && node --test scripts/`
+Run: `cd template && node --test scripts/*.test.mjs`
 Expected: FAIL — `Cannot find module './blueprint.mjs'`.
+
+Pass the glob, never the bare directory. `node --test scripts/` resolves `scripts` as a *module* and dies with `Cannot find module`, on every Node 22–25 build tested.
 
 - [ ] **Step 3: Write `template/scripts/blueprint.mjs`**
 
@@ -443,7 +445,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
 
 - [ ] **Step 4: Run the tests to verify they pass**
 
-Run: `cd template && chmod +x scripts/blueprint.mjs && node --test scripts/`
+Run: `cd template && chmod +x scripts/blueprint.mjs && node --test scripts/*.test.mjs`
 Expected: PASS, 12 tests, no warnings.
 
 - [ ] **Step 5: Wire the script into the template's `package.json`**
@@ -452,7 +454,7 @@ Add these two entries to the `scripts` object in `template/package.json`, in alp
 
 ```json
     "blueprint": "node scripts/blueprint.mjs",
-    "test:scripts": "node --test scripts/",
+    "test:scripts": "node --test scripts/*.test.mjs",
 ```
 
 `test:scripts` is deliberately separate from `test`. `vitest.config.mts` includes only `src/**/*.test.ts{,x}`, so `scripts/blueprint.test.mjs` is invisible to Vitest — and the script survives the test strip, so its test must survive too.
@@ -1511,7 +1513,7 @@ test("copyTemplate skips build output and installed dependencies", () => {
 
 - [ ] **Step 2: Run it to make sure it fails**
 
-Run: `node --test bin/`
+Run: `node --test bin/*.test.mjs`
 Expected: FAIL — `Cannot find module './create.mjs'`.
 
 - [ ] **Step 3: Create the bin-only root `package.json`**
@@ -1708,7 +1710,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
 
 - [ ] **Step 5: Run the tests to verify they pass**
 
-Run: `chmod +x bin/create.mjs && node --test bin/`
+Run: `chmod +x bin/create.mjs && node --test bin/*.test.mjs`
 Expected: PASS, 9 tests, no warnings.
 
 - [ ] **Step 6: Verify the two CLIs agree on one capability table**
