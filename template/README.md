@@ -23,6 +23,19 @@ tracking — the app runs without it.
 | `pnpm format` | Biome check and write |
 | `pnpm test` | Vitest, browser mode |
 
+## Adding capabilities
+
+```bash
+pnpm blueprint add <db|auth|ai|tables|tests|saas>
+```
+
+`auth` pulls `db` with it. The script never passes `--overwrite`, so by the
+time you have customised `src/lib/auth.ts`, shadcn prompts per file and your
+edits survive.
+
+The registry it pulls from is the `blueprint.registry` field in this
+project's `package.json`. Change that one field to point somewhere else.
+
 ## Adding components
 
 Vanilla shadcn works out of the box:

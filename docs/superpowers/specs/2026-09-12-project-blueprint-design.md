@@ -176,7 +176,7 @@ Vercel's root directory to `site/`.
 
 `scripts/blueprint.mjs` lives inside `template/`, so every generated app
 carries its own copy. Its source of truth is this repository; apps receive it
-at `degit` time and do not update it afterwards.
+when the setup CLI copies the template, and do not update it afterwards.
 
 The repository deploys to Vercel. The deployment is simultaneously the
 component gallery and the registry host, and it serves registry items from a
@@ -514,9 +514,9 @@ the repository name — turned out to be soft:
 
 - **Hostname** is read from the incoming request (see "The registry is served
   dynamically"). Deploy first, pick a domain whenever, change it later.
-- **Repository owner/name** appears only in the `degit` command in the README.
-  It is not baked into any published artifact, so renaming the repository
-  breaks nothing that already exists.
+- **Repository owner/name** appears in the `npx github:` command in the README
+  and in the CLI's default registry URL. Neither is baked into a published
+  artifact, so renaming the repository breaks nothing that already exists.
 
 ## Known cosmetic issues
 

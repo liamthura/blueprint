@@ -2,15 +2,41 @@
 
 A template and component registry for new web apps.
 
-## Starting a project
+## Start a project
 
 ```bash
-npx degit khantthura/project-blueprint/template my-app
-cd my-app && pnpm install && pnpm dev
+npx github:khantthura/project-blueprint my-app
 ```
 
-That gives a landing page with Biome, Vitest, Sentry, typed environment variables and CI. No
-database, no auth, no coupling to this repository.
+Four questions — name, what you're building, whether to wire the component
+registry, whether to keep the test harness — then it copies the template,
+installs, pulls the capabilities you chose, and prints the next steps.
+
+Non-interactive:
+
+```bash
+npx github:khantthura/project-blueprint my-app --capabilities saas --no-tests --yes
+```
+
+| Flag | |
+|---|---|
+| `--capabilities <list>` | `db`, `auth`, `ai`, `tables`, or the `saas` bundle |
+| `--no-tests` | drop the Vitest harness |
+| `--registry <url>` | point at a different deployment |
+| `--with-registry` | wire the `@blueprint` namespace without prompting |
+| `--yes` (or `-y`) | skip every prompt |
+
+## Grow a project
+
+```bash
+pnpm blueprint add db      # month 3
+pnpm blueprint add auth    # month 6
+pnpm blueprint add ai      # month 9
+```
+
+Each one fetches the capability from the registry, merges the `package.json`
+scripts it needs, and appends its variables to `.env.example`. Nothing is
+restructured, and running it twice is a no-op.
 
 ## Using the registry
 
@@ -47,5 +73,5 @@ pnpm dlx shadcn@latest apply b7lltUjfaE
 | `site/` | The gallery and registry host (deployed) |
 | `site/src/app/r/[name]` | Serves registry items |
 | `site/registry.json` | The catalogue |
-| `template/` | The app cloned by `degit` |
+| `template/` | The app copied by the setup CLI |
 | `docs/superpowers/` | Specs and plans |
