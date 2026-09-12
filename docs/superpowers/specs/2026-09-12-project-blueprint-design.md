@@ -208,8 +208,11 @@ Three kinds of item.
 
 **No `registry:theme` item. The shadcn preset is the theme.**
 
-The design baseline is preset **`b7lltUjfaE`**, applied with
-`pnpm dlx shadcn@latest apply b7lltUjfaE`. Decoded:
+The design baseline is preset **`b7lltUjfaE`**. Apply it to an existing project with
+`pnpm dlx shadcn@latest apply b7lltUjfaE`; initialise a new one with
+`shadcn init --preset b7lltUjfaE --base radix`. **`--base radix` is not optional on a
+fresh init** — the preset encodes the style but not the component library, and `init`
+otherwise defaults to Base UI, producing `base-mira` with `@base-ui/react`. Decoded:
 
 | | |
 |---|---|

@@ -168,8 +168,14 @@ git commit -m "feat(site): scaffold the preview site app"
 - [ ] **Step 1: Initialise with the preset**
 
 ```bash
-pnpm dlx shadcn@4.21.0 init --preset b7lltUjfaE --yes
+pnpm dlx shadcn@4.21.0 init --preset b7lltUjfaE --base radix --yes
 ```
+
+**`--base radix` is required.** The preset code encodes the *style* (`mira`) but not the
+component library, and `init` defaults to `base` — producing `base-mira` with
+`@base-ui/react` instead of `radix-mira` with `radix-ui`. `template/` is on Radix because
+it was initialised before the preset existed and `shadcn apply` preserved its base; a
+fresh `init --preset` does not.
 
 This is the same baseline `template/` uses — `radix-mira`, `taupe`, green theme, phosphor icons, geist with instrument-sans headings, zero radius.
 
