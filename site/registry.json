@@ -154,7 +154,7 @@
       "name": "tables",
       "type": "registry:lib",
       "title": "Data tables",
-      "description": "TanStack Table with sorting, plus a TanStack Query provider for client-side fetching.",
+      "description": "TanStack Table with sorting, plus a TanStack Query provider for client-side fetching. Mount QueryProvider in src/app/layout.tsx before using useQuery.",
       "dependencies": [
         "@tanstack/react-table@9.2.4",
         "@tanstack/react-query@5.102.8",

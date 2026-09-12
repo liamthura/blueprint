@@ -36,6 +36,9 @@ edits survive.
 The registry it pulls from is the `blueprint.registry` field in this
 project's `package.json`. Change that one field to point somewhere else.
 
+`tables` ships a `QueryProvider` but nothing mounts it for you — wrap your
+tree with it in `src/app/layout.tsx` before any component calls `useQuery`.
+
 ## Adding components
 
 Vanilla shadcn works out of the box:
