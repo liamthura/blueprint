@@ -20,6 +20,7 @@
 - `site/` and `template/` stay siblings. The only files allowed at the repository root are `.github/`, `docs/`, `bin/`, `README.md`, and a **bin-only** `package.json`. Never create a root `biome.json`, root `tsconfig.json`, or `pnpm-workspace.yaml`.
 - Capability items declare **no `registryDependencies`**. Ordering lives in the capability table. (`registry:ui` items keep theirs.)
 - Capability registry items reference files by `files[].path` relative to `site/`, with an explicit `target`. Never inline `content`.
+- **A `target` outside `src/` must be written `~/<path>`.** shadcn resolves a bare relative target under `src/` whenever the consumer project uses a `src/` layout, so `drizzle.config.ts` would land at `src/drizzle.config.ts`. The `~/` prefix means "project root". Targets already inside `src/` stay bare.
 - Both CLIs are zero-dependency ES modules with a `#!/usr/bin/env node` shebang and mode 0755.
 - `blueprint.mjs` never passes `--overwrite` to `shadcn add`, and never deletes itself.
 - Script merging never overwrites a key that already exists in the target `package.json`.
@@ -611,8 +612,8 @@ Append to the `items` array:
         { "path": "registry/db/index.ts", "type": "registry:lib", "target": "src/lib/db/index.ts" },
         { "path": "registry/db/schema.ts", "type": "registry:lib", "target": "src/lib/db/schema.ts" },
         { "path": "registry/db/env.ts", "type": "registry:lib", "target": "src/lib/db/env.ts" },
-        { "path": "registry/db/drizzle.config.ts", "type": "registry:file", "target": "drizzle.config.ts" },
-        { "path": "registry/db/docker-compose.yml", "type": "registry:file", "target": "docker-compose.yml" }
+        { "path": "registry/db/drizzle.config.ts", "type": "registry:file", "target": "~/drizzle.config.ts" },
+        { "path": "registry/db/docker-compose.yml", "type": "registry:file", "target": "~/docker-compose.yml" }
       ]
     }
 ```
@@ -946,8 +947,8 @@ test("a new account can be created and lands signed in", async ({ page }) => {
         { "path": "registry/auth/auth-form.tsx", "type": "registry:component", "target": "src/components/auth-form.tsx" },
         { "path": "registry/auth/sign-in-page.tsx", "type": "registry:file", "target": "src/app/sign-in/page.tsx" },
         { "path": "registry/auth/sign-up-page.tsx", "type": "registry:file", "target": "src/app/sign-up/page.tsx" },
-        { "path": "registry/auth/playwright.config.ts", "type": "registry:file", "target": "playwright.config.ts" },
-        { "path": "registry/auth/sign-up.spec.ts", "type": "registry:file", "target": "e2e/sign-up.spec.ts" }
+        { "path": "registry/auth/playwright.config.ts", "type": "registry:file", "target": "~/playwright.config.ts" },
+        { "path": "registry/auth/sign-up.spec.ts", "type": "registry:file", "target": "~/e2e/sign-up.spec.ts" }
       ]
     }
 ```
@@ -1290,7 +1291,7 @@ Then verify: `diff template/vitest.config.mts site/registry/tests/vitest.config.
         "@testing-library/react@16.3.3"
       ],
       "files": [
-        { "path": "registry/tests/vitest.config.mts", "type": "registry:file", "target": "vitest.config.mts" }
+        { "path": "registry/tests/vitest.config.mts", "type": "registry:file", "target": "~/vitest.config.mts" }
       ]
     }
 ```
