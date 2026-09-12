@@ -1,3 +1,4 @@
+import { headers } from "next/headers";
 import { loadRegistry } from "shadcn/registry";
 import { Button } from "@/components/ui/button";
 
@@ -6,6 +7,11 @@ export const dynamic = "force-dynamic";
 export default async function Gallery() {
   const registry = await loadRegistry({ cwd: process.cwd() });
   const items = registry.items;
+
+  const requestHeaders = await headers();
+  const host = requestHeaders.get("host") ?? "localhost:3000";
+  const proto = requestHeaders.get("x-forwarded-proto") ?? "http";
+  const origin = `${proto}://${host}`;
 
   return (
     <main className="mx-auto max-w-3xl px-6 py-16">
@@ -25,7 +31,10 @@ export default async function Gallery() {
               <p className="mt-1 text-muted-foreground text-sm">{item.description}</p>
             ) : null}
             <code className="mt-3 block overflow-x-auto rounded bg-muted px-3 py-2 text-xs">
-              pnpm dlx shadcn@latest add @blueprint/{item.name}
+              pnpm dlx shadcn@latest add {origin}/r/{item.name}.json
+            </code>
+            <code className="mt-1 block overflow-x-auto rounded bg-muted px-3 py-2 text-xs text-muted-foreground">
+              or, with @blueprint registered: pnpm dlx shadcn@latest add @blueprint/{item.name}
             </code>
           </li>
         ))}

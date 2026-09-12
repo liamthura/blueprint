@@ -1,6 +1,6 @@
 # New project
 
-Built from [project-blueprint](https://github.com/anomalyco/project-blueprint).
+Built from [project-blueprint](https://github.com/khantthura/project-blueprint).
 
 ## Running it
 

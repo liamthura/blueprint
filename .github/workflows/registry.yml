@@ -11,6 +11,8 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - uses: pnpm/action-setup@v4
+        with:
+          version: 10.0.0
       - uses: actions/setup-node@v5
         with:
           node-version: 24
@@ -29,6 +31,7 @@ jobs:
 
       - name: Every declared item must resolve when served
         working-directory: site
+        shell: bash
         run: |
           pnpm start &
           for i in $(seq 1 30); do
@@ -38,6 +41,7 @@ jobs:
           names=$(curl -sf http://localhost:3000/r/registry.json \
             | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{
                 console.log(JSON.parse(s).items.map(i=>i.name).join(' '))})")
+          [ -n "$names" ] || exit 1
           echo "checking: $names"
           for n in $names; do
             code=$(curl -s -o /dev/null -w '%{http_code}' "http://localhost:3000/r/$n.json")

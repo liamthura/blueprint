@@ -5,7 +5,7 @@ A template and component registry for new web apps.
 ## Starting a project
 
 ```bash
-npx degit anomalyco/project-blueprint/template my-app
+npx degit khantthura/project-blueprint/template my-app
 cd my-app && pnpm install && pnpm dev
 ```
 
