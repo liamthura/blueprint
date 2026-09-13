@@ -11,6 +11,7 @@ import {
   DEFAULT_REGISTRY,
   addCapabilities,
   applyPreset,
+  requireRegistry,
   stripTests,
 } from "../template/scripts/blueprint.mjs";
 
@@ -154,6 +155,9 @@ async function main(argv) {
   if (existsSync(target) && readdirSync(target).length > 0) {
     throw new Error(`${target} already exists and is not empty.`);
   }
+
+  // Fail before copying anything: a half-made project is worse than no project.
+  if (args.capabilities.length > 0 || args.wireRegistry) requireRegistry(args.registry);
 
   process.stdout.write(`\nCreating ${name} in ${target}\n`);
   copyTemplate(join(repoRoot, "template"), target);

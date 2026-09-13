@@ -1,11 +1,11 @@
-# project-blueprint
+# blueprint
 
 A template and component registry for new web apps.
 
 ## Start a project
 
 ```bash
-npx github:khantthura/project-blueprint my-app
+npx github:liamthura/blueprint my-app
 ```
 
 Four questions — name, what you're building, whether to wire the component
@@ -15,7 +15,7 @@ installs, pulls the capabilities you chose, and prints the next steps.
 Non-interactive:
 
 ```bash
-npx github:khantthura/project-blueprint my-app --capabilities saas --no-tests --yes
+npx github:liamthura/blueprint my-app --capabilities saas --no-tests --yes
 ```
 
 | Flag | |

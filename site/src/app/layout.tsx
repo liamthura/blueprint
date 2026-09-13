@@ -17,7 +17,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "blueprint",
-  description: "Component gallery and shadcn registry for project-blueprint.",
+  description: "Component gallery and shadcn registry for blueprint.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

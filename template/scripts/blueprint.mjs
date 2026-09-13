@@ -8,7 +8,17 @@ import { pathToFileURL } from "node:url";
  * The registry this project pulls capabilities from. Overridden per project by
  * a `blueprint.registry` field in package.json, and per invocation by --registry.
  */
-export const DEFAULT_REGISTRY = "https://project-blueprint.vercel.app";
+/**
+ * Where capabilities are fetched from. Empty until the preview site is deployed and
+ * this constant is set to its URL.
+ *
+ * It is deliberately NOT a guessed hostname. An earlier value pointed at
+ * `project-blueprint.vercel.app`, which turned out to be a live site belonging to
+ * somebody else — `shadcn add` would have fetched a stranger's JSON and written
+ * whatever it returned into the user's project. An unset registry that fails loudly
+ * is the only safe default; a plausible-looking one is a supply-chain hole.
+ */
+export const DEFAULT_REGISTRY = "";
 
 /**
  * Everything a capability needs beyond its files, which the registry format
@@ -144,7 +154,18 @@ function writePackage(dir, pkg) {
 }
 
 export function registryUrl(dir) {
-  return readPackage(dir).blueprint?.registry ?? DEFAULT_REGISTRY;
+  return readPackage(dir).blueprint?.registry || DEFAULT_REGISTRY;
+}
+
+/** Throws unless a registry is configured, naming both ways to set one. */
+export function requireRegistry(registry) {
+  if (registry) return registry.replace(/\/$/, "");
+  throw new Error(
+    "No registry configured, so there is nowhere to fetch capabilities from.\n" +
+      "Deploy the preview site, then either set DEFAULT_REGISTRY in\n" +
+      'scripts/blueprint.mjs, set "blueprint": { "registry": "<url>" } in\n' +
+      "package.json, or pass --registry <url>.",
+  );
 }
 
 /** Adds each capability's scripts, never overwriting one the project already has. */
@@ -194,7 +215,8 @@ export function appendEnvExample(dir, names) {
  */
 export function addCapabilities(dir, names, { registry = registryUrl(dir) } = {}) {
   const resolved = resolveCapabilities(names);
-  const urls = resolved.map((name) => `${registry.replace(/\/$/, "")}/r/${name}.json`);
+  const base = requireRegistry(registry);
+  const urls = resolved.map((name) => `${base}/r/${name}.json`);
   execFileSync("pnpm", ["exec", "shadcn", "add", "-y", ...urls], { cwd: dir, stdio: "inherit" });
   mergeScripts(dir, resolved);
   appendEnvExample(dir, resolved);

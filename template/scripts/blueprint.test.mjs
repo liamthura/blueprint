@@ -9,10 +9,12 @@ import {
   BUNDLES,
   CAPABILITIES,
   DEFAULT_PRESET,
+  DEFAULT_REGISTRY,
   ICON_PACKAGES,
   mergeScripts,
   PRESET_FONTS,
   registryUrl,
+  requireRegistry,
   resolveCapabilities,
   rewriteFonts,
   stripTests,
@@ -107,7 +109,13 @@ test("registryUrl prefers the project's own setting", () => {
     registryUrl(fixture({ blueprint: { registry: "https://x.test" } })),
     "https://x.test",
   );
-  assert.match(registryUrl(fixture()), /^https:\/\//);
+  assert.equal(registryUrl(fixture()), DEFAULT_REGISTRY);
+});
+
+test("an unconfigured registry fails loudly rather than guessing a hostname", () => {
+  assert.throws(() => requireRegistry(""), /No registry configured/);
+  assert.throws(() => requireRegistry(undefined), /No registry configured/);
+  assert.equal(requireRegistry("https://x.test/"), "https://x.test", "trailing slash trimmed");
 });
 
 test("stripTests removes the harness and leaves the app intact", () => {

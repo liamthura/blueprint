@@ -1,7 +1,7 @@
 {
   "$schema": "https://ui.shadcn.com/schema/registry.json",
   "name": "blueprint",
-  "homepage": "https://github.com/khantthura/project-blueprint",
+  "homepage": "https://github.com/liamthura/blueprint",
   "items": [
     {
       "name": "button",

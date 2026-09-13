@@ -1,6 +1,6 @@
 # New project
 
-Built from [project-blueprint](https://github.com/khantthura/project-blueprint).
+Built from [blueprint](https://github.com/liamthura/blueprint).
 
 ## Running it
 
