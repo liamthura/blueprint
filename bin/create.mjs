@@ -3,7 +3,7 @@ import { execFileSync } from "node:child_process";
 import { cpSync, existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 import { createInterface } from "node:readline/promises";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
 import {
   BUNDLES,
   CAPABILITIES,
@@ -11,6 +11,7 @@ import {
   DEFAULT_REGISTRY,
   addCapabilities,
   applyPreset,
+  isEntryPoint,
   requireRegistry,
   stripTests,
 } from "../template/scripts/blueprint.mjs";
@@ -216,7 +217,7 @@ With the db capability: pnpm db:up && pnpm db:generate && pnpm db:migrate
   process.stdout.write("\nAdd more later with: pnpm blueprint add <capability>\n");
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (isEntryPoint(import.meta.url)) {
   main(process.argv.slice(2)).catch((error) => {
     process.stderr.write(`\n${error.message}\n`);
     process.exitCode = 1;

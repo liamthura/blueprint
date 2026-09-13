@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 import { execFileSync } from "node:child_process";
-import { existsSync, globSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, globSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
 
 /**
  * The registry this project pulls capabilities from. Overridden per project by
@@ -30,6 +30,26 @@ export const DEFAULT_REGISTRY = "";
  * so choosing it at setup is a no-op — nothing is re-themed and nothing can break.
  */
 export const DEFAULT_PRESET = "b7lltUjfaE";
+
+/**
+ * True when this module is the program node was asked to run.
+ *
+ * argv[1] has to be resolved through realpath first. npm installs a `bin` as a
+ * symlink, so a package run through `npx` sees argv[1] pointing at
+ * node_modules/.bin/<name> while import.meta.url is the real file on disk.
+ * Comparing the two raw makes the CLI a silent no-op under npx — exit 0, no
+ * output, no project — while working perfectly when invoked by path, which is
+ * how every test invokes it.
+ */
+export function isEntryPoint(moduleUrl) {
+  const entry = process.argv[1];
+  if (!entry) return false;
+  try {
+    return realpathSync(entry) === fileURLToPath(moduleUrl);
+  } catch {
+    return false;
+  }
+}
 
 /**
  * Every font a shadcn preset can specify, mapped to its `next/font/google` export.
@@ -457,7 +477,7 @@ function main(argv) {
   process.stdout.write("Check .env.example for any new variables, then restart the dev server.\n");
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (isEntryPoint(import.meta.url)) {
   try {
     main(process.argv.slice(2));
   } catch (error) {

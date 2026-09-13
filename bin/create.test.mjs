@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { test } from "node:test";
 import { copyTemplate, ensureGitignore, parseArgs } from "./create.mjs";
 
@@ -117,4 +119,27 @@ test("ensureGitignore prefers the template's own .gitignore when it's readable",
     readFileSync(join(target, ".gitignore"), "utf8"),
     "/node_modules\n.env*\n!.env.example\n",
   );
+});
+
+
+test("the CLI still runs when invoked through a bin symlink", () => {
+  // npm installs a `bin` as a symlink, so under npx argv[1] is node_modules/.bin/<name>
+  // while import.meta.url is the real file. An entry guard that compares them without
+  // resolving the symlink makes the whole CLI a silent no-op: exit 0, no output, no
+  // project. Every other test here invokes the module by path, which never catches it.
+  const real = join(dirname(fileURLToPath(import.meta.url)), "create.mjs");
+  const link = join(mkdtempSync(join(tmpdir(), "bin-")), "blueprint");
+  symlinkSync(real, link);
+
+  const result = (argv) => {
+    try {
+      return { stderr: execFileSync(process.execPath, [link, ...argv], { encoding: "utf8" }) };
+    } catch (error) {
+      return { stderr: error.stderr ?? "", status: error.status };
+    }
+  };
+
+  const { stderr, status } = result(["--nonsense"]);
+  assert.equal(status, 1, "must reach main() and fail, not exit 0 doing nothing");
+  assert.match(stderr, /Unknown option: --nonsense/);
 });
