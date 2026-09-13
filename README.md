@@ -24,7 +24,7 @@ npx github:liamthura/blueprint my-app --capabilities saas --no-tests --yes
 | `--no-tests` | drop the Vitest harness |
 | `--registry <url>` | pull capabilities from a deployed registry instead of the local checkout |
 | `--database-url <url>` | Postgres URL to write into `.env`; defaults to the local Docker one |
-| `--with-registry` | wire the `@blueprint` namespace without prompting |
+| `--with-registry` | wire the `@blueprint` namespace; needs `--registry` too |
 | `--preset <code>` | a shadcn preset code from ui.shadcn.com/create; defaults to the house preset `b7lltUjfaE` |
 | `--yes` (or `-y`) | skip every prompt |
 

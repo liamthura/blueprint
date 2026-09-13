@@ -169,11 +169,6 @@ async function askMissing(args) {
       );
     }
 
-    if (!args.wireRegistry) {
-      const registry = await prompt(rl, "Wire the @blueprint component registry? [y/N]", "n");
-      args.wireRegistry = registry.toLowerCase().startsWith("y");
-    }
-
     if (args.tests) {
       const keep = await prompt(rl, "Keep the test harness? [Y/n]", "y");
       args.tests = !keep.toLowerCase().startsWith("n");
@@ -199,6 +194,10 @@ async function main(argv) {
   }
 
   // Fail before copying anything: a half-made project is worse than no project.
+  // There is deliberately no prompt for this. Wiring the namespace needs a deployed
+  // registry URL, and until components are customised by hand it would buy nothing
+  // anyway: shadcn rewrites icon imports to match components.json on every `add`,
+  // so `@blueprint/dialog` and a plain `shadcn add dialog` produce identical files.
   if (args.wireRegistry && !args.registry) {
     throw new Error(
       "--with-registry needs a registry URL. Pass --registry <url>, or drop\n" +
