@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { execFileSync } from "node:child_process";
+import { randomBytes } from "node:crypto";
 import { cpSync, existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 import { createInterface } from "node:readline/promises";
@@ -11,12 +12,42 @@ import {
   DEFAULT_REGISTRY,
   addCapabilities,
   applyPreset,
+  DEFAULT_SOURCE,
   isEntryPoint,
-  requireRegistry,
+  resolveCapabilities,
   stripTests,
 } from "../template/scripts/blueprint.mjs";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+
+/** Matches the credentials in the db capability's compose.db.yaml. */
+const LOCAL_DATABASE_URL = "postgres://blueprint:blueprint@localhost:5432/blueprint";
+
+/**
+ * Seeds .env from .env.example and sets any values collected at setup, so the
+ * project runs without the user hand-editing a file first. .env is gitignored;
+ * .env.example stays the committed template.
+ */
+export function writeEnv(target, values) {
+  const path = join(target, ".env");
+  const example = join(target, ".env.example");
+  let text = existsSync(path)
+    ? readFileSync(path, "utf8")
+    : existsSync(example)
+      ? readFileSync(example, "utf8")
+      : "";
+
+  for (const [key, value] of Object.entries(values)) {
+    if (!value) continue;
+    const line = `${key}=${value}`;
+    text = new RegExp(`^${key}=.*$`, "m").test(text)
+      ? text.replace(new RegExp(`^${key}=.*$`, "m"), line)
+      : `${text.endsWith("\n") || text === "" ? text : `${text}\n`}${line}\n`;
+  }
+
+  writeFileSync(path, text);
+  return path;
+}
 
 /** Never copied into a new project: build output, installed deps, and local caches. */
 const SKIP = new Set(["node_modules", ".next", "tsconfig.tsbuildinfo", ".turbo", ".vercel"]);
@@ -61,6 +92,7 @@ export function parseArgs(argv) {
     tests: true,
     registry: DEFAULT_REGISTRY,
     preset: DEFAULT_PRESET,
+    databaseUrl: undefined,
     wireRegistry: false,
     yes: false,
   };
@@ -71,6 +103,7 @@ export function parseArgs(argv) {
     else if (arg === "--yes" || arg === "-y") args.yes = true;
     else if (arg === "--registry") args.registry = value(argv, ++i, arg);
     else if (arg === "--preset") args.preset = value(argv, ++i, arg);
+    else if (arg === "--database-url") args.databaseUrl = value(argv, ++i, arg);
     else if (arg === "--with-registry") args.wireRegistry = true;
     else if (arg === "--capabilities") {
       args.capabilities = value(argv, ++i, arg)
@@ -128,6 +161,14 @@ async function askMissing(args) {
       );
     }
 
+    if (args.databaseUrl === undefined && resolveCapabilities(args.capabilities).includes("db")) {
+      args.databaseUrl = await prompt(
+        rl,
+        `Postgres URL? Press enter for the local Docker one [${LOCAL_DATABASE_URL}]`,
+        LOCAL_DATABASE_URL,
+      );
+    }
+
     if (!args.wireRegistry) {
       const registry = await prompt(rl, "Wire the @blueprint component registry? [y/N]", "n");
       args.wireRegistry = registry.toLowerCase().startsWith("y");
@@ -158,7 +199,17 @@ async function main(argv) {
   }
 
   // Fail before copying anything: a half-made project is worse than no project.
-  if (args.capabilities.length > 0 || args.wireRegistry) requireRegistry(args.registry);
+  if (args.wireRegistry && !args.registry) {
+    throw new Error(
+      "--with-registry needs a registry URL. Pass --registry <url>, or drop\n" +
+        "--with-registry: the component registry is optional and capabilities\n" +
+        "do not need it.",
+    );
+  }
+
+  const capabilities = resolveCapabilities(args.capabilities);
+  const hasDb = capabilities.includes("db");
+  const hasAuth = capabilities.includes("auth");
 
   process.stdout.write(`\nCreating ${name} in ${target}\n`);
   copyTemplate(join(repoRoot, "template"), target);
@@ -167,7 +218,7 @@ async function main(argv) {
   const packagePath = join(target, "package.json");
   const pkg = JSON.parse(readFileSync(packagePath, "utf8"));
   pkg.name = name;
-  pkg.blueprint = { registry: args.registry };
+  pkg.blueprint = { source: DEFAULT_SOURCE, ...(args.registry ? { registry: args.registry } : {}) };
   writeFileSync(packagePath, `${JSON.stringify(pkg, null, 2)}\n`);
 
   if (!args.tests) {
@@ -186,12 +237,23 @@ async function main(argv) {
 
   if (args.capabilities.length > 0) {
     process.stdout.write(`\nAdding capabilities: ${args.capabilities.join(", ")}\n`);
-    addCapabilities(target, args.capabilities, { registry: args.registry });
+    addCapabilities(target, args.capabilities, {
+      registry: args.registry,
+      source: join(repoRoot, "site"),
+    });
   }
 
   if (args.wireRegistry) {
     run("pnpm", ["exec", "shadcn", "registry", "add", `@blueprint=${args.registry}/r/{name}.json`], target);
   }
+
+  writeEnv(target, {
+    DATABASE_URL: args.databaseUrl,
+    // Generated per project rather than left blank: better-auth requires 32+ chars,
+    // so an empty value makes `pnpm build` fail on the very first run. A secret the
+    // user never has to think about beats a secret they have to be told to create.
+    BETTER_AUTH_SECRET: hasAuth ? randomBytes(32).toString("base64url") : undefined,
+  });
 
   try {
     run("git", ["init", "-b", "main"], target);
@@ -203,16 +265,30 @@ async function main(argv) {
 Done.
 
   cd ${name}
-  cp .env.example .env
   pnpm dev
 `);
 
+  const composeFiles = ["compose.yaml"];
+  if (hasDb) composeFiles.push("compose.db.yaml");
+
   if (args.capabilities.length > 0) {
     process.stdout.write(`
-Your capabilities need some environment variables — see .env.example.
-With the db capability: pnpm db:up && pnpm db:generate && pnpm db:migrate
+Fill in anything still blank in .env — see .env.example for the full list.
 `);
+    if (hasDb) {
+      process.stdout.write(`
+Start the database and run the first migration:
+
+  pnpm db:up && pnpm db:generate && pnpm db:migrate
+`);
+    }
   }
+
+  process.stdout.write(`
+Run it in Docker:
+
+  docker compose${composeFiles.map((f) => ` -f ${f}`).join("")} up --build
+`);
 
   process.stdout.write("\nAdd more later with: pnpm blueprint add <capability>\n");
 }

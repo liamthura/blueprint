@@ -9,7 +9,12 @@
       "title": "Button",
       "description": "Button with the blueprint defaults.",
       "dependencies": ["class-variance-authority", "cn", "radix-ui"],
-      "files": [{ "path": "src/components/ui/button.tsx", "type": "registry:ui" }]
+      "files": [
+        {
+          "path": "src/components/ui/button.tsx",
+          "type": "registry:ui"
+        }
+      ]
     },
     {
       "name": "dialog",
@@ -18,7 +23,12 @@
       "description": "Dialog with the blueprint defaults.",
       "registryDependencies": ["button"],
       "dependencies": ["cn", "radix-ui", "@phosphor-icons/react"],
-      "files": [{ "path": "src/components/ui/dialog.tsx", "type": "registry:ui" }]
+      "files": [
+        {
+          "path": "src/components/ui/dialog.tsx",
+          "type": "registry:ui"
+        }
+      ]
     },
     {
       "name": "dropdown-menu",
@@ -26,7 +36,12 @@
       "title": "Dropdown menu",
       "description": "Dropdown menu with the blueprint defaults.",
       "dependencies": ["cn", "radix-ui", "@phosphor-icons/react"],
-      "files": [{ "path": "src/components/ui/dropdown-menu.tsx", "type": "registry:ui" }]
+      "files": [
+        {
+          "path": "src/components/ui/dropdown-menu.tsx",
+          "type": "registry:ui"
+        }
+      ]
     },
     {
       "name": "sonner",
@@ -34,7 +49,12 @@
       "title": "Sonner",
       "description": "Toast wrapper with the blueprint defaults.",
       "dependencies": ["sonner", "next-themes", "@phosphor-icons/react"],
-      "files": [{ "path": "src/components/ui/sonner.tsx", "type": "registry:ui" }]
+      "files": [
+        {
+          "path": "src/components/ui/sonner.tsx",
+          "type": "registry:ui"
+        }
+      ]
     },
     {
       "name": "db",
@@ -49,22 +69,30 @@
       ],
       "devDependencies": ["drizzle-kit@0.31.10", "@types/pg@8.23.1"],
       "files": [
-        { "path": "registry/db/index.ts", "type": "registry:lib", "target": "src/lib/db/index.ts" },
+        {
+          "path": "registry/db/index.ts",
+          "type": "registry:lib",
+          "target": "src/lib/db/index.ts"
+        },
         {
           "path": "registry/db/schema.ts",
           "type": "registry:lib",
           "target": "src/lib/db/schema.ts"
         },
-        { "path": "registry/db/env.ts", "type": "registry:lib", "target": "src/lib/db/env.ts" },
+        {
+          "path": "registry/db/env.ts",
+          "type": "registry:lib",
+          "target": "src/lib/db/env.ts"
+        },
         {
           "path": "registry/db/drizzle.config.ts",
           "type": "registry:file",
           "target": "~/drizzle.config.ts"
         },
         {
-          "path": "registry/db/docker-compose.yml",
+          "path": "registry/db/compose.db.yaml",
           "type": "registry:file",
-          "target": "~/docker-compose.yml"
+          "target": "~/compose.db.yaml"
         }
       ]
     },
@@ -76,7 +104,11 @@
       "dependencies": ["better-auth@1.7.4", "@t3-oss/env-nextjs@0.13.11", "zod@4.6.2"],
       "devDependencies": ["@playwright/test@1.63.0"],
       "files": [
-        { "path": "registry/auth/auth.ts", "type": "registry:lib", "target": "src/lib/auth.ts" },
+        {
+          "path": "registry/auth/auth.ts",
+          "type": "registry:lib",
+          "target": "src/lib/auth.ts"
+        },
         {
           "path": "registry/auth/auth-env.ts",
           "type": "registry:lib",
@@ -137,7 +169,11 @@
         "zod@4.6.2"
       ],
       "files": [
-        { "path": "registry/ai/ai-env.ts", "type": "registry:lib", "target": "src/lib/ai-env.ts" },
+        {
+          "path": "registry/ai/ai-env.ts",
+          "type": "registry:lib",
+          "target": "src/lib/ai-env.ts"
+        },
         {
           "path": "registry/ai/route.ts",
           "type": "registry:file",

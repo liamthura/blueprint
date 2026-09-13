@@ -1,0 +1,35 @@
+# Layered on top of compose.yaml:
+#
+#   docker compose -f compose.yaml -f compose.db.yaml up --build
+#
+# On its own it is just the development database, which is what `pnpm db:up` runs.
+
+services:
+  postgres:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: blueprint
+      POSTGRES_PASSWORD: blueprint
+      POSTGRES_DB: blueprint
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U blueprint"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Only takes effect when compose.yaml is layered in too; harmless otherwise.
+  app:
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # Inside the compose network the host is the service name, not localhost.
+      DATABASE_URL: postgres://blueprint:blueprint@postgres:5432/blueprint
+
+volumes:
+  postgres-data:

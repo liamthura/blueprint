@@ -1,0 +1,16 @@
+# The app on its own. With the db capability installed, bring Postgres up
+# alongside it by layering the second file:
+#
+#   docker compose -f compose.yaml -f compose.db.yaml up --build
+#
+# Two files rather than one merged file: nothing has to rewrite YAML when a
+# capability is added, and either half runs on its own.
+
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env

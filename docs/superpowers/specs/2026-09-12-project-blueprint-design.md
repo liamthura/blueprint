@@ -324,6 +324,16 @@ Generated apps store their registry URL in a `blueprint.registry` field in
 their own `package.json`, written once by the setup CLI. An app that needs to
 point elsewhere edits one field.
 
+**Superseded 2026-09-13: capabilities install from a local checkout by default.**
+The reasoning below was correct about shadcn but wrong about the consequence. It is
+true that `shadcn add ./item.json` only honours `files[].content`, so real `.ts`
+sources cannot be served from a bare path. What it missed is that the `npx github:`
+clone *already contains* `site/registry/` — so the CLI can inline the contents itself
+and hand shadcn a materialised item, keeping icon rewriting and per-file prompts with
+no server involved. A configured registry URL still wins when one is set, which is how
+fixes propagate to projects already shipped; without one, nothing is deployed and
+everything still works. The original note follows.
+
 **Capabilities are always fetched over HTTP, never from a local clone.** `shadcn
 add ./item.json` does work against a local file, but only when the item carries its
 file contents inline as a JSON string — a `files[].path` is never resolved when the

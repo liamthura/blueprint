@@ -22,7 +22,8 @@ npx github:liamthura/blueprint my-app --capabilities saas --no-tests --yes
 |---|---|
 | `--capabilities <list>` | `db`, `auth`, `ai`, `tables`, or the `saas` bundle |
 | `--no-tests` | drop the Vitest harness |
-| `--registry <url>` | point at a different deployment |
+| `--registry <url>` | pull capabilities from a deployed registry instead of the local checkout |
+| `--database-url <url>` | Postgres URL to write into `.env`; defaults to the local Docker one |
 | `--with-registry` | wire the `@blueprint` namespace without prompting |
 | `--preset <code>` | a shadcn preset code from ui.shadcn.com/create; defaults to the house preset `b7lltUjfaE` |
 | `--yes` (or `-y`) | skip every prompt |
@@ -47,6 +48,22 @@ pnpm dlx shadcn@latest init --preset b7lltUjfaE --base radix --template next
 
 `--base radix` is not optional there: the preset encodes the style but not the
 component library, and `init` otherwise defaults to Base UI.
+
+## Docker
+
+Every project ships a `Dockerfile`, a `.dockerignore` and a `compose.yaml`:
+
+```bash
+docker compose -f compose.yaml up --build              # app only
+docker compose -f compose.yaml -f compose.db.yaml up --build   # app + Postgres
+```
+
+`compose.db.yaml` arrives with the `db` capability and is a layer rather than a
+replacement, so adding a capability never has to rewrite YAML and either half runs
+alone — `pnpm db:up` uses the db file on its own for local development.
+
+The image is a three-stage build on `output: "standalone"`, so the runtime stage
+carries the traced server bundle and no toolchain or source.
 
 ## Grow a project
 

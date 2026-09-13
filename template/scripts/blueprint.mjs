@@ -1,13 +1,18 @@
 #!/usr/bin/env node
 import { execFileSync } from "node:child_process";
-import { existsSync, globSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  globSync,
+  mkdtempSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-/**
- * The registry this project pulls capabilities from. Overridden per project by
- * a `blueprint.registry` field in package.json, and per invocation by --registry.
- */
 /**
  * Where capabilities are fetched from. Empty until the preview site is deployed and
  * this constant is set to its URL.
@@ -20,11 +25,6 @@ import { fileURLToPath } from "node:url";
  */
 export const DEFAULT_REGISTRY = "";
 
-/**
- * Everything a capability needs beyond its files, which the registry format
- * cannot express: the package.json scripts it requires, the environment
- * variables it reads, and the capabilities it is useless without.
- */
 /**
  * The house design baseline. The template already ships with this preset applied,
  * so choosing it at setup is a no-op — nothing is re-themed and nothing can break.
@@ -86,12 +86,17 @@ export const ICON_PACKAGES = {
   remix: "@remixicon/react@4.9.0",
 };
 
+/**
+ * Everything a capability needs beyond its files, which the registry format cannot
+ * express: the package.json scripts it requires, the environment variables it
+ * reads, and the capabilities it is useless without.
+ */
 export const CAPABILITIES = {
   db: {
     title: "Postgres with Drizzle",
     needs: [],
     scripts: {
-      "db:up": "docker compose up -d",
+      "db:up": "docker compose -f compose.db.yaml up -d",
       "db:generate": "drizzle-kit generate",
       "db:migrate": "drizzle-kit migrate",
       "db:studio": "drizzle-kit studio",
@@ -177,15 +182,67 @@ export function registryUrl(dir) {
   return readPackage(dir).blueprint?.registry || DEFAULT_REGISTRY;
 }
 
-/** Throws unless a registry is configured, naming both ways to set one. */
+/**
+ * The GitHub repository capabilities come from when a project has no local copy.
+ * Overridden per project by `blueprint.source` in package.json.
+ */
+export const DEFAULT_SOURCE = "liamthura/blueprint";
+
+/**
+ * Writes a registry item to a temp file with every file's contents inlined.
+ *
+ * `shadcn add` accepts a local path but only honours `files[].content`; a
+ * `files[].path` is silently ignored when the item is read from disk rather than
+ * served over HTTP. Inlining here is what lets capabilities install from a local
+ * checkout with nothing deployed. Going through shadcn rather than copying the
+ * files directly keeps its icon-import rewriting and its prompt-per-existing-file
+ * behaviour, both of which a plain copy would lose.
+ */
+export function materialiseItem(registryRoot, name) {
+  const registry = JSON.parse(readFileSync(join(registryRoot, "registry.json"), "utf8"));
+  const item = registry.items.find((candidate) => candidate.name === name);
+  if (!item) throw new Error(`No registry item named "${name}" in ${registryRoot}`);
+
+  const inlined = {
+    ...item,
+    files: item.files.map((file) => ({
+      ...file,
+      content: readFileSync(join(registryRoot, file.path), "utf8"),
+    })),
+  };
+
+  const dir = mkdtempSync(join(tmpdir(), "blueprint-item-"));
+  const path = join(dir, `${name}.json`);
+  writeFileSync(path, JSON.stringify(inlined, null, 2));
+  return path;
+}
+
+/** Downloads a GitHub repository to a temp directory and returns its `site/` path. */
+export function fetchRegistrySource(slug, { ref = "main" } = {}) {
+  const dir = mkdtempSync(join(tmpdir(), "blueprint-src-"));
+  const url = `https://codeload.github.com/${slug}/tar.gz/refs/heads/${ref}`;
+  execFileSync("sh", [
+    "-c",
+    `curl -fsSL ${JSON.stringify(url)} | tar -xz -C ${JSON.stringify(dir)}`,
+  ]);
+  const [root] = globSync("*/", { cwd: dir });
+  if (!root) throw new Error(`Downloaded ${slug} but the archive was empty.`);
+  return join(dir, root, "site");
+}
+
+/** Trims a configured registry URL, or throws naming every way to set one. */
 export function requireRegistry(registry) {
   if (registry) return registry.replace(/\/$/, "");
   throw new Error(
-    "No registry configured, so there is nowhere to fetch capabilities from.\n" +
-      "Deploy the preview site, then either set DEFAULT_REGISTRY in\n" +
-      'scripts/blueprint.mjs, set "blueprint": { "registry": "<url>" } in\n' +
-      "package.json, or pass --registry <url>.",
+    "No registry configured. Set DEFAULT_REGISTRY in scripts/blueprint.mjs, set\n" +
+      '"blueprint": { "registry": "<url>" } in package.json, or pass --registry <url>.',
   );
+}
+
+/** Where this project's capability files come from when no registry URL is set. */
+export function resolveSource(dir) {
+  const slug = readPackage(dir).blueprint?.source || DEFAULT_SOURCE;
+  return fetchRegistrySource(slug);
 }
 
 /** Adds each capability's scripts, never overwriting one the project already has. */
@@ -233,11 +290,21 @@ export function appendEnvExample(dir, names) {
  * capability lands, the first one's files are customised, and shadcn's
  * per-file prompt is what keeps those edits.
  */
-export function addCapabilities(dir, names, { registry = registryUrl(dir) } = {}) {
+export function addCapabilities(dir, names, { registry = registryUrl(dir), source } = {}) {
   const resolved = resolveCapabilities(names);
-  const base = requireRegistry(registry);
-  const urls = resolved.map((name) => `${base}/r/${name}.json`);
-  execFileSync("pnpm", ["exec", "shadcn", "add", "-y", ...urls], { cwd: dir, stdio: "inherit" });
+
+  // A configured registry URL wins, so a deployed site keeps propagating fixes to
+  // projects already shipped. Without one, capabilities are materialised from a
+  // local checkout — which is what makes this work with nothing deployed at all.
+  const root = registry ? null : (source ?? resolveSource(dir));
+  const addresses = registry
+    ? resolved.map((name) => `${requireRegistry(registry)}/r/${name}.json`)
+    : resolved.map((name) => materialiseItem(root, name));
+
+  execFileSync("pnpm", ["exec", "shadcn", "add", "-y", ...addresses], {
+    cwd: dir,
+    stdio: "inherit",
+  });
   mergeScripts(dir, resolved);
   appendEnvExample(dir, resolved);
   return resolved;

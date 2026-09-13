@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { test } from "node:test";
-import { copyTemplate, ensureGitignore, parseArgs } from "./create.mjs";
+import { copyTemplate, ensureGitignore, parseArgs, writeEnv } from "./create.mjs";
 
 test("parseArgs takes the target from the first positional", () => {
   const args = parseArgs(["my-app"]);
@@ -142,4 +142,42 @@ test("the CLI still runs when invoked through a bin symlink", () => {
   const { stderr, status } = result(["--nonsense"]);
   assert.equal(status, 1, "must reach main() and fail, not exit 0 doing nothing");
   assert.match(stderr, /Unknown option: --nonsense/);
+});
+
+
+test("writeEnv seeds .env from .env.example and sets collected values", () => {
+  const dir = mkdtempSync(join(tmpdir(), "env-"));
+  writeFileSync(join(dir, ".env.example"), "SENTRY_DSN=\n# db\nDATABASE_URL=postgres://placeholder\n");
+
+  writeEnv(dir, { DATABASE_URL: "postgres://real@host/db" });
+  const text = readFileSync(join(dir, ".env"), "utf8");
+
+  assert.match(text, /^DATABASE_URL=postgres:\/\/real@host\/db$/m, "replaces, not appends");
+  assert.equal(text.match(/^DATABASE_URL=/gm).length, 1, "exactly one entry");
+  assert.match(text, /^SENTRY_DSN=$/m, "other keys survive");
+  assert.ok(!existsSync(join(dir, ".env.local")));
+});
+
+test("writeEnv appends a key the example never mentioned, and skips empty values", () => {
+  const dir = mkdtempSync(join(tmpdir(), "env-"));
+  writeFileSync(join(dir, ".env.example"), "SENTRY_DSN=\n");
+
+  writeEnv(dir, { DATABASE_URL: "postgres://x", OPENAI_API_KEY: undefined });
+  const text = readFileSync(join(dir, ".env"), "utf8");
+
+  assert.match(text, /^DATABASE_URL=postgres:\/\/x$/m);
+  assert.ok(!text.includes("OPENAI_API_KEY"), "an unanswered value must not write a blank line");
+});
+
+test("writeEnv never clobbers an .env that already exists", () => {
+  const dir = mkdtempSync(join(tmpdir(), "env-"));
+  writeFileSync(join(dir, ".env.example"), "SENTRY_DSN=\n");
+  writeFileSync(join(dir, ".env"), "SENTRY_DSN=https://mine\nKEEP=yes\n");
+
+  writeEnv(dir, { DATABASE_URL: "postgres://x" });
+  const text = readFileSync(join(dir, ".env"), "utf8");
+
+  assert.match(text, /^SENTRY_DSN=https:\/\/mine$/m, "existing values survive");
+  assert.match(text, /^KEEP=yes$/m);
+  assert.match(text, /^DATABASE_URL=postgres:\/\/x$/m);
 });
