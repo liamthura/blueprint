@@ -8,9 +8,15 @@ import {
 } from "ai";
 import { aiEnv } from "@/lib/ai-env";
 
-const openai = createOpenAI({ apiKey: aiEnv.OPENAI_API_KEY });
-
 export async function POST(request: Request) {
+  if (!aiEnv.OPENAI_API_KEY) {
+    return Response.json(
+      { error: "OPENAI_API_KEY is not set. Add it to .env and restart the dev server." },
+      { status: 503 },
+    );
+  }
+
+  const openai = createOpenAI({ apiKey: aiEnv.OPENAI_API_KEY });
   const { messages }: { messages: UIMessage[] } = await request.json();
 
   const result = streamText({

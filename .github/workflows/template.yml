@@ -30,11 +30,10 @@ jobs:
 
   build-with-capabilities:
     runs-on: ubuntu-latest
-    env:
-      DATABASE_URL: postgres://blueprint:blueprint@localhost:5432/blueprint
-      BETTER_AUTH_SECRET: ci-secret-that-is-long-enough-to-pass-validation
-      BETTER_AUTH_URL: http://localhost:3000
-      OPENAI_API_KEY: sk-ci-not-a-real-key
+    # Deliberately no env: block. The CLI seeds .env, and `next build` reads it,
+    # so the job builds against exactly what a user gets. Supplying values here
+    # would have hidden that a fresh `ai` project could not build without an
+    # OpenAI key — CI was green while every real user hit the failure.
     steps:
       - uses: actions/checkout@v5
       - uses: pnpm/action-setup@v4
@@ -47,25 +46,13 @@ jobs:
       - name: Run the create-cli test suite
         run: node --test bin/*.test.mjs
 
-      - name: Build and serve the registry
-        working-directory: site
-        shell: bash
-        run: |
-          pnpm install --frozen-lockfile
-          pnpm build
-          pnpm start &
-          for i in $(seq 1 30); do
-            curl -sf http://localhost:3000/r/registry.json >/dev/null && exit 0
-            sleep 1
-          done
-          echo "registry never came up"
-          exit 1
-
+      # No registry is configured and none is served: this is the default path,
+      # where capabilities are materialised from this checkout. registry.yml
+      # separately proves every item still resolves when served over HTTP.
       - name: Create an app with every capability
         run: |
           node bin/create.mjs "${RUNNER_TEMP}/app" \
             --capabilities db,auth,ai,tables \
-            --registry http://localhost:3000 \
             --no-tests --yes
 
       - name: The capabilities must have been wired in
@@ -74,7 +61,8 @@ jobs:
         run: |
           for f in src/lib/db/index.ts src/lib/auth.ts src/lib/db/auth-schema.ts \
                    src/app/api/auth/\[...all\]/route.ts src/app/api/chat/route.ts \
-                   src/components/data-table.tsx drizzle.config.ts docker-compose.yml; do
+                   src/components/data-table.tsx drizzle.config.ts \
+                   Dockerfile .dockerignore compose.yaml compose.db.yaml; do
             test -f "$f" || { echo "missing: $f"; exit 1; }
           done
           node -e "
@@ -87,6 +75,12 @@ jobs:
           grep -q '^DATABASE_URL=' .env.example
           grep -q '^BETTER_AUTH_SECRET=' .env.example
           grep -q '^OPENAI_API_KEY=' .env.example
+          # The CLI seeds .env, so the project runs without hand-editing a file.
+          grep -q '^DATABASE_URL=postgres://' .env
+          node -e "
+            const m = require('node:fs').readFileSync('.env','utf8').match(/^BETTER_AUTH_SECRET=(.*)$/m);
+            if (!m || m[1].length < 32) { console.error('auth secret was not generated'); process.exit(1); }
+          "
 
       - name: Typecheck, lint and build the generated app
         working-directory: ${{ runner.temp }}/app
@@ -94,4 +88,4 @@ jobs:
 
       - name: Adding a capability twice must not break the project
         working-directory: ${{ runner.temp }}/app
-        run: pnpm blueprint add db && pnpm typecheck
+        run: pnpm blueprint add db --source "${GITHUB_WORKSPACE}/site" && pnpm typecheck

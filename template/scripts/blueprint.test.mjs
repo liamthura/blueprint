@@ -13,6 +13,7 @@ import {
   ICON_PACKAGES,
   mergeScripts,
   PRESET_FONTS,
+  parseAddArgs,
   registryUrl,
   requireRegistry,
   resolveCapabilities,
@@ -256,4 +257,22 @@ test("swapIconPackage is idempotent and knows every shadcn icon library", () => 
     assert.ok(ICON_PACKAGES[library], `${library} has a package`);
   }
   assert.equal(swapIconPackage(dir, "not-a-library"), null);
+});
+
+test("parseAddArgs separates capability names from options", () => {
+  assert.deepEqual(parseAddArgs(["db", "auth"]), { names: ["db", "auth"], options: {} });
+  assert.deepEqual(parseAddArgs(["db", "--source", "/tmp/site"]), {
+    names: ["db"],
+    options: { source: "/tmp/site" },
+  });
+  assert.deepEqual(parseAddArgs(["--registry", "https://x.test", "ai"]), {
+    names: ["ai"],
+    options: { registry: "https://x.test" },
+  });
+});
+
+test("parseAddArgs rejects a missing value and an unknown flag", () => {
+  assert.throws(() => parseAddArgs(["db", "--source"]), /--source needs a value/);
+  assert.throws(() => parseAddArgs(["db", "--source", "--registry"]), /--source needs a value/);
+  assert.throws(() => parseAddArgs(["db", "--wat"]), /Unknown option: --wat/);
 });

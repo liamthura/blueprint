@@ -262,7 +262,7 @@ customisation, not its first.** Porting twenty upfront is speculative work.
 
 | Capability | Contents | Requires |
 |---|---|---|
-| `db` | Drizzle, `pg`, schema, migrations, `docker-compose.yml` (postgres:17) | — |
+| `db` | Drizzle, `pg`, schema, migrations, `compose.db.yaml` (postgres:17) | — |
 | `auth` | better-auth, route handler, sign-in/up | `db` |
 | `ai` | AI SDK, streaming route, chat component | — |
 | `tables` | TanStack Table, TanStack Query, data-table component | — |

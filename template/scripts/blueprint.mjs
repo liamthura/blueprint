@@ -529,17 +529,47 @@ function usage() {
   const bundles = Object.entries(BUNDLES)
     .map(([name, members]) => `  ${name.padEnd(8)} ${members.join(" + ")}`)
     .join("\n");
-  return `usage: pnpm blueprint add <capability...>\n\ncapabilities:\n${capabilities}\n\nbundles:\n${bundles}\n`;
+  return (
+    `usage: pnpm blueprint add <capability...> [--source <dir>] [--registry <url>]\n\n` +
+    `capabilities:\n${capabilities}\n\nbundles:\n${bundles}\n\n` +
+    `  --source <dir>    a local checkout's site/ directory, instead of downloading one\n` +
+    `  --registry <url>  a deployed registry, instead of a local checkout\n`
+  );
+}
+
+/** Splits `add a b --source dir` into its capability names and its options. */
+export function parseAddArgs(argv) {
+  const names = [];
+  const options = {};
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i];
+    if (arg === "--source" || arg === "--registry") {
+      const found = argv[++i];
+      if (!found || found.startsWith("-")) throw new Error(`${arg} needs a value`);
+      options[arg.slice(2)] = found;
+    } else if (arg.startsWith("-")) {
+      throw new Error(`Unknown option: ${arg}`);
+    } else {
+      names.push(arg);
+    }
+  }
+  return { names, options };
 }
 
 function main(argv) {
-  const [command, ...names] = argv;
-  if (command !== "add" || names.length === 0) {
+  const [command, ...rest] = argv;
+  if (command !== "add" || rest.length === 0) {
     process.stderr.write(usage());
     process.exitCode = 1;
     return;
   }
-  const added = addCapabilities(process.cwd(), names);
+  const { names, options } = parseAddArgs(rest);
+  if (names.length === 0) {
+    process.stderr.write(usage());
+    process.exitCode = 1;
+    return;
+  }
+  const added = addCapabilities(process.cwd(), names, options);
   process.stdout.write(`\nAdded: ${added.join(", ")}\n`);
   process.stdout.write("Check .env.example for any new variables, then restart the dev server.\n");
 }
