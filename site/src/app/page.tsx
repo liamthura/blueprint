@@ -18,8 +18,12 @@ export default async function Gallery() {
   return (
     <main className="mx-auto max-w-3xl px-6 py-16">
       <h1 className="font-heading font-semibold text-3xl tracking-tight">blueprint</h1>
-      <p className="mt-2 text-muted-foreground">
-        {components.length} components and {capabilities.length} capabilities.
+      <p className="mt-2 max-w-xl text-muted-foreground">
+        The shared parts of every blueprint project. Components are customised once here instead of
+        separately in each project; capabilities are whole features a project can grow into later.
+      </p>
+      <p className="mt-4 text-muted-foreground text-sm">
+        {components.length} components, {capabilities.length} capabilities.
       </p>
 
       <ul className="mt-10 space-y-4">
@@ -44,9 +48,10 @@ export default async function Gallery() {
 
       <section className="mt-16 border-t pt-8">
         <h2 className="font-heading font-medium text-xl">Capabilities</h2>
-        <p className="mt-2 text-muted-foreground text-sm">
-          Added to a project with the in-project script, which also merges the package.json scripts
-          and environment variables each one needs.
+        <p className="mt-2 max-w-xl text-muted-foreground text-sm">
+          A feature a project can grow into months after it started — a database, a login, streaming
+          chat — without being restructured for it. Each brings its own files, dependencies,
+          package.json scripts and environment variables.
         </p>
         <ul className="mt-6 space-y-4">
           {capabilities.map((item) => (

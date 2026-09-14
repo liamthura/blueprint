@@ -1,6 +1,21 @@
 # blueprint
 
-A template and component registry for new web apps.
+One stack for new web apps, so every project starts the same way and stays that
+way.
+
+**The problem it solves.** Fifteen projects, each scaffolded from scratch, each
+drifting. Three of them carry their own `components.json` and have diverged. None
+has error tracking, none validates environment variables, two have CI. Fixing the
+button's focus ring in one project leaves the other fourteen wrong, and six months
+later nobody remembers which version is correct.
+
+**So there are two halves.** `template/` is what a new project is made of — Next,
+Tailwind, Biome, Vitest, Sentry, env validation and CI, already wired together.
+`site/` is the one place shared components live, so a fix made once reaches every
+project instead of being copy-pasted into each.
+
+A project starts as a landing page and grows a database, a login and AI features
+over months, without being restructured for any of them.
 
 ## Start a project
 
@@ -8,9 +23,10 @@ A template and component registry for new web apps.
 npx github:liamthura/blueprint my-app
 ```
 
-Four questions — name, what you're building, whether to wire the component
-registry, whether to keep the test harness — then it copies the template,
-installs, pulls the capabilities you chose, and prints the next steps.
+Three questions — name, what you're building, whether to keep the test harness
+(a fourth asks for a Postgres URL if you chose something that needs one). Then it
+copies the template, installs, adds the capabilities you chose, seeds `.env`, and
+prints the next steps.
 
 Non-interactive:
 
@@ -77,9 +93,31 @@ Each one fetches the capability from the registry, merges the `package.json`
 scripts it needs, and appends its variables to `.env.example`. Nothing is
 restructured, and running it twice is a no-op.
 
-## Using the registry
+## The component registry
 
-The deployment is both the component gallery and the registry host.
+**What it is for:** so you only customise a component once.
+
+Restyle the button here, and every project picks the change up with one command.
+Without it you edit the button in whichever project you happen to be in, and the
+others keep the old one until they have all quietly diverged.
+
+**The trade.** A component you own stops receiving upstream shadcn's fixes —
+accessibility corrections, Radix bumps, React adjustments. You have taken over
+maintaining it, and nobody sends notice. So a component earns a place here only
+after you have customised it the same way **twice**: evidence you want your own
+version rather than a one-off tweak. Diff the owned ones against upstream
+quarterly.
+
+**Status: nothing in it is customised yet.** All four items are identical to what
+plain `shadcn add` produces — the icon differences you will see are shadcn
+rewriting imports to match `components.json`, not customisation. It starts being
+useful the first time you genuinely change one.
+
+Capabilities do **not** need this. They install from the checkout the setup CLI
+already has, and `pnpm blueprint add` downloads the repository when you use it
+later. Deploying is only about sharing components.
+
+### Using it
 
 Pull one item with no configuration:
 
@@ -107,10 +145,20 @@ zero radius. Apply it to any existing project with:
 pnpm dlx shadcn@latest apply b7lltUjfaE
 ```
 
-| Path | What |
+## What is where
+
+| Path | What it is |
 |---|---|
-| `site/` | The gallery and registry host (deployed) |
-| `site/src/app/r/[name]` | Serves registry items |
-| `site/registry.json` | The catalogue |
-| `template/` | The app copied by the setup CLI |
-| `docs/superpowers/` | Specs and plans |
+| `template/` | What a new project is made of. The setup CLI copies this. |
+| `site/registry/` | Capability source files — the db, auth, ai and tables features. |
+| `site/registry.json` | The catalogue: every component and capability, and where its files land in a project. |
+| `site/src/components/ui/` | The shared components. Customise them here, not in each project. |
+| `site/src/app/page.tsx` | The gallery — a browsable list of the above. |
+| `site/src/app/r/[name]/` | Serves an item as JSON so `shadcn add` can fetch it. |
+| `bin/create.mjs` | The setup CLI, run by `npx github:`. |
+| `template/scripts/blueprint.mjs` | Ships into every project as `pnpm blueprint`. |
+| `docs/superpowers/` | The design spec and the implementation plans behind it. |
+
+`site/` and `template/` are siblings rather than nested: Biome 2.5 rejects a nested
+root configuration, and every workaround was worse than the layout change. The only
+cost is setting Vercel's root directory to `site/`.
