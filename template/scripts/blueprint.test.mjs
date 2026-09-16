@@ -6,14 +6,17 @@ import { test } from "node:test";
 import {
   appendEnvExample,
   applyPreset,
+  applyVersions,
   BUNDLES,
   CAPABILITIES,
+  compatKey,
   DEFAULT_PRESET,
   DEFAULT_REGISTRY,
   ICON_PACKAGES,
   mergeScripts,
   PRESET_FONTS,
   parseAddArgs,
+  parseUpdateArgs,
   registryUrl,
   requireRegistry,
   resolveCapabilities,
@@ -21,6 +24,8 @@ import {
   stripTests,
   swapIconPackage,
   TEST_DEPS,
+  UPDATE_CHECKS,
+  updatePlan,
 } from "./blueprint.mjs";
 
 function fixture({ scripts = {}, blueprint } = {}) {
@@ -275,4 +280,74 @@ test("parseAddArgs rejects a missing value and an unknown flag", () => {
   assert.throws(() => parseAddArgs(["db", "--source"]), /--source needs a value/);
   assert.throws(() => parseAddArgs(["db", "--source", "--registry"]), /--source needs a value/);
   assert.throws(() => parseAddArgs(["db", "--wat"]), /Unknown option: --wat/);
+});
+
+test("compatKey treats a 0.x minor as its own band", () => {
+  assert.equal(compatKey("1.2.3"), compatKey("1.9.0"));
+  assert.notEqual(compatKey("1.2.3"), compatKey("2.0.0"));
+  assert.notEqual(compatKey("0.2.6"), compatKey("0.3.0"));
+  assert.equal(compatKey("0.2.6"), compatKey("0.2.9"));
+  assert.equal(compatKey("^1.2.3"), compatKey("1.4.0"));
+});
+
+test("updatePlan flags the bumps that cross a band and sorts by name", () => {
+  const plan = updatePlan({
+    zod: { current: "4.6.2", latest: "4.6.5" },
+    cn: { current: "0.2.6", latest: "0.3.0" },
+    vitest: { current: "4.1.11", latest: "5.0.1" },
+    next: { current: "16.3.5", latest: "16.3.5" },
+  });
+  assert.deepEqual(
+    plan.map((bump) => [bump.name, bump.breaking]),
+    [
+      ["cn", true],
+      ["vitest", true],
+      ["zod", false],
+    ],
+  );
+  assert.equal(plan.at(-1).to, "4.6.5");
+});
+
+test("updatePlan tolerates an empty report", () => {
+  assert.deepEqual(updatePlan({}), []);
+  assert.deepEqual(updatePlan(undefined), []);
+});
+
+test("applyVersions rewrites both fields and keeps any range prefix", () => {
+  const dir = mkdtempSync(join(tmpdir(), "blueprint-update-"));
+  writeFileSync(
+    join(dir, "package.json"),
+    `${JSON.stringify(
+      {
+        name: "fixture",
+        dependencies: { zod: "4.6.2", next: "^16.3.5" },
+        devDependencies: { vitest: "4.1.11" },
+      },
+      null,
+      2,
+    )}\n`,
+  );
+  applyVersions(dir, [
+    { name: "zod", to: "4.6.5" },
+    { name: "next", to: "16.4.0" },
+    { name: "vitest", to: "5.0.1" },
+    { name: "absent", to: "9.9.9" },
+  ]);
+  const pkg = JSON.parse(readFileSync(join(dir, "package.json"), "utf8"));
+  assert.deepEqual(pkg.dependencies, { zod: "4.6.5", next: "^16.4.0" });
+  assert.deepEqual(pkg.devDependencies, { vitest: "5.0.1" });
+  assert.equal(pkg.absent, undefined);
+});
+
+test("parseUpdateArgs reads its two flags and rejects anything else", () => {
+  assert.deepEqual(parseUpdateArgs([]), {});
+  assert.deepEqual(parseUpdateArgs(["--major", "--dry-run"]), { major: true, dryRun: true });
+  assert.throws(() => parseUpdateArgs(["--latest"]), /Unknown option: --latest/);
+});
+
+test("every update check is a script the template declares", () => {
+  const pkg = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
+  for (const check of UPDATE_CHECKS) {
+    assert.ok(pkg.scripts[check], `template declares a ${check} script`);
+  }
 });

@@ -46,6 +46,25 @@ project's `package.json`. Change that one field to point somewhere else.
 `tables` ships a `QueryProvider` but nothing mounts it for you — wrap your
 tree with it in `src/app/layout.tsx` before any component calls `useQuery`.
 
+## Updating dependencies
+
+```bash
+pnpm blueprint update             # everything that cannot break
+pnpm blueprint update --dry-run   # just tell me what is behind
+pnpm blueprint update --major     # include the bumps that can break
+```
+
+Bumps every dependency to its latest version within the same compatibility band,
+then runs this project's own `lint`, `typecheck`, `test` and `build`. If any of
+them fails, `package.json` and `pnpm-lock.yaml` are restored and the install is
+undone — so a run either leaves you up to date and green, or exactly where you
+started.
+
+Below 1.0 there is no compatibility promise, so `0.2` and `0.3` count as different
+bands. Those bumps, and every major, are held back until you ask for them with
+`--major` — the point being that you read the release notes for those, not that
+the command refuses to do them.
+
 ## Adding components
 
 Vanilla shadcn works out of the box:

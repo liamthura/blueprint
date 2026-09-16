@@ -522,6 +522,155 @@ export function stripTests(dir) {
   return removed;
 }
 
+/**
+ * The checks an update has to survive, slowest last. Only the scripts the project
+ * actually declares get run — a project created with `--no-tests` has no `test`
+ * script, and a check that does not exist is not a check that failed.
+ */
+export const UPDATE_CHECKS = ["lint", "typecheck", "test", "test:scripts", "build"];
+
+/**
+ * The band of versions a package promises not to break within.
+ *
+ * Above 1.0 that band is the major. Below it there is no such promise — semver
+ * lets 0.x.y break on the minor, and this stack pins several 0.x packages whose
+ * minor bumps genuinely are breaking (`cn` 0.2 -> 0.3, `@t3-oss/env-nextjs`) — so
+ * 0.2 and 0.3 count as different bands.
+ */
+export function compatKey(version) {
+  const [major, minor] = version.replace(/^\D+/, "").split(".");
+  return major === "0" ? `0.${minor}` : major;
+}
+
+/**
+ * Turns `pnpm outdated --format json` into the bumps to make, each flagged with
+ * whether it crosses a compatibility band. Nothing is filtered out here: the
+ * caller decides what to do with the breaking ones, so it can say how many it
+ * held back rather than silently hiding them.
+ */
+export function updatePlan(outdated) {
+  return Object.entries(outdated ?? {})
+    .filter(([, info]) => info.current && info.latest && info.current !== info.latest)
+    .map(([name, info]) => ({
+      name,
+      from: info.current,
+      to: info.latest,
+      breaking: compatKey(info.current) !== compatKey(info.latest),
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/**
+ * Reads the outdated report. `pnpm outdated` exits non-zero precisely when it has
+ * something to report, so a thrown error with output on stdout is the normal case;
+ * an error with no output is a real failure (no lockfile, no network) and is
+ * re-thrown.
+ */
+export function readOutdated(dir) {
+  try {
+    const stdout = execFileSync("pnpm", ["outdated", "--format", "json"], {
+      cwd: dir,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "inherit"],
+    });
+    return stdout.trim() ? JSON.parse(stdout) : {};
+  } catch (error) {
+    const stdout = error.stdout?.trim();
+    if (!stdout) throw error;
+    return JSON.parse(stdout);
+  }
+}
+
+/**
+ * Writes the new versions into package.json, keeping whatever range prefix was
+ * there. The template pins exact versions, but a project that has since switched
+ * to `^` should stay on `^`.
+ */
+export function applyVersions(dir, plan) {
+  const pkg = readPackage(dir);
+  for (const { name, to } of plan) {
+    for (const field of ["dependencies", "devDependencies"]) {
+      const current = pkg[field]?.[name];
+      if (!current) continue;
+      pkg[field][name] = `${current.match(/^\D*/)[0]}${to}`;
+    }
+  }
+  writePackage(dir, pkg);
+}
+
+/** Runs the project's own checks, returning the name of the first one that fails. */
+export function runChecks(dir, { log = (line) => process.stdout.write(line) } = {}) {
+  const scripts = readPackage(dir).scripts ?? {};
+  for (const check of UPDATE_CHECKS) {
+    if (!scripts[check]) continue;
+    log(`  running pnpm ${check}\n`);
+    try {
+      execFileSync("pnpm", ["run", check], { cwd: dir, stdio: ["ignore", "pipe", "pipe"] });
+    } catch (error) {
+      process.stderr.write(`${error.stdout ?? ""}${error.stderr ?? ""}`);
+      return check;
+    }
+  }
+  return null;
+}
+
+/**
+ * Moves dependencies forward and proves the project still works, restoring
+ * package.json and the lockfile if it does not.
+ *
+ * The rollback is the whole point. Bumping versions is one `pnpm install`; knowing
+ * whether the bump broke the stack is the part people skip, and a half-updated
+ * project with a failing build is worse than an out-of-date one. Breaking bumps
+ * are held back unless asked for, because those are the ones that need reading
+ * release notes rather than running a command.
+ */
+export function updateDependencies(
+  dir,
+  { major = false, dryRun = false, log = (line) => process.stdout.write(line) } = {},
+) {
+  const all = updatePlan(readOutdated(dir));
+  const plan = major ? all : all.filter((bump) => !bump.breaking);
+  const held = all.length - plan.length;
+  if (plan.length === 0) return { plan, held, applied: false, failed: null };
+
+  for (const { name, from, to, breaking } of plan) {
+    log(`  ${breaking ? "!" : " "} ${name} ${from} -> ${to}\n`);
+  }
+  if (dryRun) return { plan, held, applied: false, failed: null };
+
+  const snapshot = [join(dir, "package.json"), join(dir, "pnpm-lock.yaml")]
+    .filter((path) => existsSync(path))
+    .map((path) => [path, readFileSync(path, "utf8")]);
+
+  // --no-frozen-lockfile because package.json has just moved ahead of the lockfile,
+  // and pnpm forces frozen installs whenever CI is set.
+  const install = () =>
+    execFileSync("pnpm", ["install", "--no-frozen-lockfile"], { cwd: dir, stdio: "inherit" });
+
+  applyVersions(dir, plan);
+  try {
+    install();
+    const failed = runChecks(dir, { log });
+    if (failed) throw new Error(`pnpm ${failed} failed`);
+  } catch (error) {
+    for (const [path, content] of snapshot) writeFileSync(path, content);
+    install();
+    return { plan, held, applied: false, failed: error.message };
+  }
+  return { plan, held, applied: true, failed: null };
+}
+
+/** Splits `update --major --dry-run` into its options. */
+export function parseUpdateArgs(argv) {
+  const options = {};
+  for (const arg of argv) {
+    if (arg === "--major") options.major = true;
+    else if (arg === "--dry-run") options.dryRun = true;
+    else throw new Error(`Unknown option: ${arg}`);
+  }
+  return options;
+}
+
 function usage() {
   const capabilities = Object.entries(CAPABILITIES)
     .map(([name, { title }]) => `  ${name.padEnd(8)} ${title}`)
@@ -530,10 +679,13 @@ function usage() {
     .map(([name, members]) => `  ${name.padEnd(8)} ${members.join(" + ")}`)
     .join("\n");
   return (
-    `usage: pnpm blueprint add <capability...> [--source <dir>] [--registry <url>]\n\n` +
+    `usage: pnpm blueprint add <capability...> [--source <dir>] [--registry <url>]\n` +
+    `       pnpm blueprint update [--major] [--dry-run]\n\n` +
     `capabilities:\n${capabilities}\n\nbundles:\n${bundles}\n\n` +
     `  --source <dir>    a local checkout's site/ directory, instead of downloading one\n` +
-    `  --registry <url>  a deployed registry, instead of a local checkout\n`
+    `  --registry <url>  a deployed registry, instead of a local checkout\n` +
+    `  --major           include bumps that cross a compatibility band\n` +
+    `  --dry-run         list the bumps without installing them\n`
   );
 }
 
@@ -556,8 +708,34 @@ export function parseAddArgs(argv) {
   return { names, options };
 }
 
+function update(rest) {
+  const options = parseUpdateArgs(rest);
+  const { plan, held, applied, failed } = updateDependencies(process.cwd(), options);
+  const heldNote = held > 0 ? `${held} held back — see \`update --major\`\n` : "";
+
+  if (plan.length === 0) {
+    process.stdout.write(`Everything is up to date. ${heldNote || "\n"}`);
+    return;
+  }
+  if (options.dryRun) {
+    process.stdout.write(`\n${plan.length} to update. ${heldNote}`);
+    return;
+  }
+  if (applied) {
+    process.stdout.write(`\nUpdated ${plan.length}, checks passed. ${heldNote}`);
+    return;
+  }
+  process.stderr.write(`\n${failed} — rolled back, nothing changed.\n`);
+  process.stderr.write("Bump the offending package on its own to see what broke.\n");
+  process.exitCode = 1;
+}
+
 function main(argv) {
   const [command, ...rest] = argv;
+  if (command === "update") {
+    update(rest);
+    return;
+  }
   if (command !== "add" || rest.length === 0) {
     process.stderr.write(usage());
     process.exitCode = 1;

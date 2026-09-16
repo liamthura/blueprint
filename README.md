@@ -93,6 +93,21 @@ Each one fetches the capability from the registry, merges the `package.json`
 scripts it needs, and appends its variables to `.env.example`. Nothing is
 restructured, and running it twice is a no-op.
 
+## Keep a project current
+
+```bash
+pnpm blueprint update
+```
+
+Moves every dependency to its latest version within the same compatibility band,
+then runs the project's own `lint`, `typecheck`, `test` and `build`. A failure
+restores `package.json` and the lockfile and undoes the install, so the run either
+leaves the project up to date and green or exactly as it was. Majors — and 0.x
+minors, which break just as readily — wait for `--major`.
+
+It reads nothing but the project it is run in, so the blueprint itself updates the
+same way: run it in `template/`.
+
 ## The component registry
 
 **What it is for:** so you only customise a component once.
