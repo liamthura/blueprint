@@ -428,8 +428,11 @@ export function swapIconPackage(dir, iconLibrary) {
  * So the division is: `apply` owns the theme CSS and the components, and this
  * function owns the fonts and the icon dependency. layout.tsx and the font slots
  * are snapshotted and restored, then repointed deliberately.
- * Call this BEFORE adding capabilities — `shadcn add` rewrites icon imports to match
- * components.json, so capabilities pulled afterwards get the right icons for free.
+ * Call this BEFORE adding capabilities, so a capability's dependencies install
+ * against the icon library the project has settled on. `shadcn add` does NOT rewrite
+ * icon imports in a local registry item, which is why no capability source imports an
+ * icon package: it would either break the build or reinstall the library this just
+ * removed. Inline SVG in the capability, nothing to rewrite.
  */
 export function applyPreset(dir, code, { log = (line) => process.stdout.write(line) } = {}) {
   if (code === DEFAULT_PRESET) return { applied: false, reason: "already the default preset" };

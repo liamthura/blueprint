@@ -1,6 +1,5 @@
 "use client";
 
-import { CaretDownIcon, CaretUpIcon } from "@phosphor-icons/react";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
   createSortedRowModel,
@@ -10,6 +9,20 @@ import {
   useTable,
 } from "@tanstack/react-table";
 import { cn } from "@/lib/utils";
+
+/**
+ * Inline rather than from an icon package. A capability that imports one pins the
+ * project to it: `blueprint --preset` swaps the icon dependency, and `shadcn add`
+ * does not rewrite these imports, so a pinned import either breaks the build or
+ * drags the old library back in alongside the new one.
+ */
+function Caret({ direction }: { direction: "asc" | "desc" }) {
+  return (
+    <svg viewBox="0 0 16 16" aria-hidden="true" className="size-3.5 shrink-0 fill-current">
+      <path d={direction === "asc" ? "M8 5l4 6H4z" : "M8 11L4 5h8z"} />
+    </svg>
+  );
+}
 
 const features = tableFeatures({
   rowSortingFeature,
@@ -46,8 +59,8 @@ export function DataTable<TData extends object>({
                       onClick={header.column.getToggleSortingHandler()}
                     >
                       <table.FlexRender header={header} />
-                      {header.column.getIsSorted() === "asc" ? <CaretUpIcon /> : null}
-                      {header.column.getIsSorted() === "desc" ? <CaretDownIcon /> : null}
+                      {header.column.getIsSorted() === "asc" ? <Caret direction="asc" /> : null}
+                      {header.column.getIsSorted() === "desc" ? <Caret direction="desc" /> : null}
                     </button>
                   )}
                 </th>

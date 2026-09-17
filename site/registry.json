@@ -8,7 +8,11 @@
       "type": "registry:ui",
       "title": "Button",
       "description": "Button with the blueprint defaults.",
-      "dependencies": ["class-variance-authority", "cn", "radix-ui"],
+      "dependencies": [
+        "class-variance-authority",
+        "cn",
+        "radix-ui"
+      ],
       "files": [
         {
           "path": "src/components/ui/button.tsx",
@@ -21,8 +25,14 @@
       "type": "registry:ui",
       "title": "Dialog",
       "description": "Dialog with the blueprint defaults.",
-      "registryDependencies": ["button"],
-      "dependencies": ["cn", "radix-ui", "@phosphor-icons/react"],
+      "registryDependencies": [
+        "button"
+      ],
+      "dependencies": [
+        "cn",
+        "radix-ui",
+        "@phosphor-icons/react"
+      ],
       "files": [
         {
           "path": "src/components/ui/dialog.tsx",
@@ -35,7 +45,11 @@
       "type": "registry:ui",
       "title": "Dropdown menu",
       "description": "Dropdown menu with the blueprint defaults.",
-      "dependencies": ["cn", "radix-ui", "@phosphor-icons/react"],
+      "dependencies": [
+        "cn",
+        "radix-ui",
+        "@phosphor-icons/react"
+      ],
       "files": [
         {
           "path": "src/components/ui/dropdown-menu.tsx",
@@ -48,7 +62,11 @@
       "type": "registry:ui",
       "title": "Sonner",
       "description": "Toast wrapper with the blueprint defaults.",
-      "dependencies": ["sonner", "next-themes", "@phosphor-icons/react"],
+      "dependencies": [
+        "sonner",
+        "next-themes",
+        "@phosphor-icons/react"
+      ],
       "files": [
         {
           "path": "src/components/ui/sonner.tsx",
@@ -67,7 +85,10 @@
         "@t3-oss/env-nextjs@0.13.11",
         "zod@4.6.2"
       ],
-      "devDependencies": ["drizzle-kit@0.31.10", "@types/pg@8.23.1"],
+      "devDependencies": [
+        "drizzle-kit@0.31.10",
+        "@types/pg@8.23.1"
+      ],
       "files": [
         {
           "path": "registry/db/index.ts",
@@ -101,8 +122,14 @@
       "type": "registry:lib",
       "title": "Authentication",
       "description": "better-auth with email and password, on the db capability's Drizzle instance.",
-      "dependencies": ["better-auth@1.7.4", "@t3-oss/env-nextjs@0.13.11", "zod@4.6.2"],
-      "devDependencies": ["@playwright/test@1.63.0"],
+      "dependencies": [
+        "better-auth@1.7.4",
+        "@t3-oss/env-nextjs@0.13.11",
+        "zod@4.6.2"
+      ],
+      "devDependencies": [
+        "@playwright/test@1.63.0"
+      ],
       "files": [
         {
           "path": "registry/auth/auth.ts",
@@ -193,8 +220,7 @@
       "description": "TanStack Table with sorting, plus a TanStack Query provider for client-side fetching. Mount QueryProvider in src/app/layout.tsx before using useQuery.",
       "dependencies": [
         "@tanstack/react-table@9.2.4",
-        "@tanstack/react-query@5.102.8",
-        "@phosphor-icons/react@2.1.10"
+        "@tanstack/react-query@5.102.8"
       ],
       "files": [
         {

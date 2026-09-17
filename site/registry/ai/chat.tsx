@@ -1,11 +1,28 @@
 "use client";
 
 import { useChat } from "@ai-sdk/react";
-import { PaperPlaneRightIcon } from "@phosphor-icons/react";
 import { DefaultChatTransport } from "ai";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+
+/** Inline for the same reason as the data table's caret: no icon library pinned. */
+function SendArrow() {
+  return (
+    <svg
+      viewBox="0 0 16 16"
+      aria-hidden="true"
+      className="size-3.5 shrink-0"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M2.5 8h10M9 4.5 12.5 8 9 11.5" />
+    </svg>
+  );
+}
 
 export function Chat() {
   const [input, setInput] = useState("");
@@ -45,7 +62,7 @@ export function Chat() {
           disabled={status === "streaming"}
         />
         <Button type="submit" size="icon" disabled={status === "streaming"}>
-          <PaperPlaneRightIcon />
+          <SendArrow />
           <span className="sr-only">Send</span>
         </Button>
       </form>
