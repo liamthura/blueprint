@@ -22,7 +22,9 @@ services:
       timeout: 5s
       retries: 10
 
-  # Only takes effect when compose.yaml is layered in too; harmless otherwise.
+  # Needs compose.yaml layered in to be valid at all: this override carries no image,
+  # and compose rejects the whole project if nothing supplies one. `pnpm db:up` passes
+  # both files for that reason.
   app:
     depends_on:
       postgres:

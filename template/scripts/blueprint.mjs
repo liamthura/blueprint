@@ -97,7 +97,13 @@ export const CAPABILITIES = {
     title: "Postgres with Drizzle",
     needs: [],
     scripts: {
-      "db:up": "docker compose -f compose.db.yaml up -d",
+      // --wait because the printed next step chains `db:up && db:generate && db:migrate`,
+      // and without it `up -d` returns on start, not on healthy — the migration then
+      // races the database and fails on a cold volume.
+      // Both files, because compose.db.yaml's `app` override has no image of its own
+      // and compose validates the whole project: on its own it is an invalid project,
+      // not a harmless no-op. `postgres` so this starts the database, not the app.
+      "db:up": "docker compose -f compose.yaml -f compose.db.yaml up -d --wait postgres",
       "db:generate": "drizzle-kit generate",
       "db:migrate": "drizzle-kit migrate",
       "db:studio": "drizzle-kit studio",
