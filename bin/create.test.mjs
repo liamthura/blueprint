@@ -5,7 +5,14 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { test } from "node:test";
-import { copyTemplate, ensureGitignore, parseArgs, writeEnv } from "./create.mjs";
+import { CAPABILITIES, TEST_DEPS } from "../template/scripts/blueprint.mjs";
+import {
+  copyTemplate,
+  ensureGitignore,
+  FALLBACK_GITIGNORE,
+  parseArgs,
+  writeEnv,
+} from "./create.mjs";
 
 test("parseArgs takes the target from the first positional", () => {
   const args = parseArgs(["my-app"]);
@@ -41,7 +48,7 @@ test("parseArgs rejects an unknown capability", () => {
 });
 
 test("parseArgs rejects an unknown flag", () => {
-  assert.throws(() => parseArgs(["app", "--wat"]), /Unknown option: --wat/);
+  assert.throws(() => parseArgs(["app", "--wat"]), /Unknown option '--wat'/);
 });
 
 test("parseArgs leaves target undefined when none is given", () => {
@@ -49,13 +56,8 @@ test("parseArgs leaves target undefined when none is given", () => {
 });
 
 test("parseArgs rejects a flag that is missing its value", () => {
-  assert.throws(() => parseArgs(["app", "--registry"]), /--registry needs a value/);
-  assert.throws(() => parseArgs(["app", "--capabilities", "--yes"]), /--capabilities needs a value/);
-});
-
-test("parseArgs can wire the registry without prompting", () => {
-  assert.equal(parseArgs(["app"]).wireRegistry, false);
-  assert.equal(parseArgs(["app", "--with-registry"]).wireRegistry, true);
+  assert.throws(() => parseArgs(["app", "--registry"]), /'--registry <value>' argument missing/);
+  assert.throws(() => parseArgs(["app", "--capabilities", "--yes"]), /argument is ambiguous/);
 });
 
 test("parseArgs rejects a second positional argument", () => {
@@ -87,40 +89,28 @@ test("copyTemplate skips build output and installed dependencies", () => {
 });
 
 test("ensureGitignore writes one when the copy didn't bring one", () => {
-  const templateDir = mkdtempSync(join(tmpdir(), "tpl-"));
   const target = mkdtempSync(join(tmpdir(), "out-"));
-  // templateDir has no .gitignore, simulating npx github: stripping it out.
 
-  ensureGitignore(templateDir, target);
+  ensureGitignore(target);
 
-  const gitignore = readFileSync(join(target, ".gitignore"), "utf8");
-  assert.ok(existsSync(join(target, ".gitignore")));
-  assert.match(gitignore, /\.env\*/);
+  assert.match(readFileSync(join(target, ".gitignore"), "utf8"), /\.env\*/);
 });
 
 test("ensureGitignore leaves an existing .gitignore alone", () => {
-  const templateDir = mkdtempSync(join(tmpdir(), "tpl-"));
   const target = mkdtempSync(join(tmpdir(), "out-"));
   writeFileSync(join(target, ".gitignore"), "custom\n");
 
-  ensureGitignore(templateDir, target);
+  ensureGitignore(target);
 
   assert.equal(readFileSync(join(target, ".gitignore"), "utf8"), "custom\n");
 });
 
-test("ensureGitignore prefers the template's own .gitignore when it's readable", () => {
-  const templateDir = mkdtempSync(join(tmpdir(), "tpl-"));
-  const target = mkdtempSync(join(tmpdir(), "out-"));
-  writeFileSync(join(templateDir, ".gitignore"), "/node_modules\n.env*\n!.env.example\n");
-
-  ensureGitignore(templateDir, target);
-
-  assert.equal(
-    readFileSync(join(target, ".gitignore"), "utf8"),
-    "/node_modules\n.env*\n!.env.example\n",
-  );
+test("the fallback .gitignore has not drifted from the template's", () => {
+  // The fallback is all an `npx github:` project ever gets — packlist strips the real
+  // file from the tarball. Drift here is how such a project starts committing secrets.
+  const real = join(dirname(fileURLToPath(import.meta.url)), "..", "template", ".gitignore");
+  assert.equal(FALLBACK_GITIGNORE, readFileSync(real, "utf8"));
 });
-
 
 test("the CLI still runs when invoked through a bin symlink", () => {
   // npm installs a `bin` as a symlink, so under npx argv[1] is node_modules/.bin/<name>
@@ -141,7 +131,7 @@ test("the CLI still runs when invoked through a bin symlink", () => {
 
   const { stderr, status } = result(["--nonsense"]);
   assert.equal(status, 1, "must reach main() and fail, not exit 0 doing nothing");
-  assert.match(stderr, /Unknown option: --nonsense/);
+  assert.match(stderr, /Unknown option '--nonsense'/);
 });
 
 
@@ -180,4 +170,35 @@ test("writeEnv never clobbers an .env that already exists", () => {
   assert.match(text, /^SENTRY_DSN=https:\/\/mine$/m, "existing values survive");
   assert.match(text, /^KEEP=yes$/m);
   assert.match(text, /^DATABASE_URL=postgres:\/\/x$/m);
+});
+
+const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
+const registryItem = (name) =>
+  JSON.parse(readFileSync(join(repoRoot, "site", "registry.json"), "utf8")).items.find(
+    (item) => item.name === name,
+  );
+
+test("the tests capability ships the template's own vitest config, not a drifted copy", () => {
+  // Two copies on purpose: Vercel's root directory is site/, so the registry item
+  // cannot reference ../template. This is what stops them diverging in silence.
+  const item = registryItem("tests");
+  const [file] = item.files;
+  assert.equal(file.target, "~/vitest.config.mts");
+  assert.equal(
+    readFileSync(join(repoRoot, "site", file.path), "utf8"),
+    readFileSync(join(repoRoot, "template", "vitest.config.mts"), "utf8"),
+  );
+});
+
+test("the tests capability reinstalls exactly the deps stripTests removes", () => {
+  const shipped = registryItem("tests").devDependencies.map((spec) =>
+    spec.slice(0, spec.lastIndexOf("@")),
+  );
+  assert.deepEqual([...shipped].sort(), [...TEST_DEPS].sort());
+});
+
+test("every capability in the CLI has a registry item to install", () => {
+  for (const name of Object.keys(CAPABILITIES)) {
+    assert.ok(registryItem(name), `registry.json declares an item named "${name}"`);
+  }
 });

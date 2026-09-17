@@ -277,9 +277,9 @@ test("parseAddArgs separates capability names from options", () => {
 });
 
 test("parseAddArgs rejects a missing value and an unknown flag", () => {
-  assert.throws(() => parseAddArgs(["db", "--source"]), /--source needs a value/);
-  assert.throws(() => parseAddArgs(["db", "--source", "--registry"]), /--source needs a value/);
-  assert.throws(() => parseAddArgs(["db", "--wat"]), /Unknown option: --wat/);
+  assert.throws(() => parseAddArgs(["db", "--source"]), /'--source <value>' argument missing/);
+  assert.throws(() => parseAddArgs(["db", "--source", "--registry"]), /argument is ambiguous/);
+  assert.throws(() => parseAddArgs(["db", "--wat"]), /Unknown option '--wat'/);
 });
 
 test("compatKey treats a 0.x minor as its own band", () => {
@@ -340,9 +340,9 @@ test("applyVersions rewrites both fields and keeps any range prefix", () => {
 });
 
 test("parseUpdateArgs reads its two flags and rejects anything else", () => {
-  assert.deepEqual(parseUpdateArgs([]), {});
+  assert.deepEqual(parseUpdateArgs([]), { major: false, dryRun: false });
   assert.deepEqual(parseUpdateArgs(["--major", "--dry-run"]), { major: true, dryRun: true });
-  assert.throws(() => parseUpdateArgs(["--latest"]), /Unknown option: --latest/);
+  assert.throws(() => parseUpdateArgs(["--latest"]), /Unknown option '--latest'/);
 });
 
 test("every update check is a script the template declares", () => {

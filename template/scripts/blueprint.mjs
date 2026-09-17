@@ -12,6 +12,7 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { parseArgs as parse } from "node:util";
 
 /**
  * Where capabilities are fetched from. Empty until the preview site is deployed and
@@ -662,13 +663,11 @@ export function updateDependencies(
 
 /** Splits `update --major --dry-run` into its options. */
 export function parseUpdateArgs(argv) {
-  const options = {};
-  for (const arg of argv) {
-    if (arg === "--major") options.major = true;
-    else if (arg === "--dry-run") options.dryRun = true;
-    else throw new Error(`Unknown option: ${arg}`);
-  }
-  return options;
+  const { values } = parse({
+    args: argv,
+    options: { major: { type: "boolean" }, "dry-run": { type: "boolean" } },
+  });
+  return { major: values.major ?? false, dryRun: values["dry-run"] ?? false };
 }
 
 function usage() {
@@ -691,21 +690,12 @@ function usage() {
 
 /** Splits `add a b --source dir` into its capability names and its options. */
 export function parseAddArgs(argv) {
-  const names = [];
-  const options = {};
-  for (let i = 0; i < argv.length; i++) {
-    const arg = argv[i];
-    if (arg === "--source" || arg === "--registry") {
-      const found = argv[++i];
-      if (!found || found.startsWith("-")) throw new Error(`${arg} needs a value`);
-      options[arg.slice(2)] = found;
-    } else if (arg.startsWith("-")) {
-      throw new Error(`Unknown option: ${arg}`);
-    } else {
-      names.push(arg);
-    }
-  }
-  return { names, options };
+  const { values, positionals } = parse({
+    args: argv,
+    allowPositionals: true,
+    options: { source: { type: "string" }, registry: { type: "string" } },
+  });
+  return { names: positionals, options: { ...values } };
 }
 
 function update(rest) {

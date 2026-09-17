@@ -5,6 +5,7 @@ import { cpSync, existsSync, readFileSync, readdirSync, writeFileSync } from "no
 import { basename, dirname, join, resolve } from "node:path";
 import { createInterface } from "node:readline/promises";
 import { fileURLToPath } from "node:url";
+import { parseArgs as parse } from "node:util";
 import {
   BUNDLES,
   CAPABILITIES,
@@ -39,9 +40,10 @@ export function writeEnv(target, values) {
 
   for (const [key, value] of Object.entries(values)) {
     if (!value) continue;
+    const existing = new RegExp(`^${key}=.*$`, "m");
     const line = `${key}=${value}`;
-    text = new RegExp(`^${key}=.*$`, "m").test(text)
-      ? text.replace(new RegExp(`^${key}=.*$`, "m"), line)
+    text = existing.test(text)
+      ? text.replace(existing, line)
       : `${text.endsWith("\n") || text === "" ? text : `${text}\n`}${line}\n`;
   }
 
@@ -54,72 +56,97 @@ const SKIP = new Set(["node_modules", ".next", "tsconfig.tsbuildinfo", ".turbo",
 
 /**
  * `template/.gitignore` is dropped from the tarball by npm-packlist's always-excluded
- * defaults, so `npx github:...` never ships it. This is the fallback for when the
- * source file isn't readable in the repo clone either.
+ * defaults, so `npx github:...` never ships it and the copy arrives without one. This
+ * constant is what a project gets in that case. It is a verbatim copy of
+ * `template/.gitignore`; the test asserts they stay identical, because a drifted copy
+ * is how an `npx`-made project ends up committing a `.pem` or a screenshot artifact.
  */
-const FALLBACK_GITIGNORE = `/node_modules
+export const FALLBACK_GITIGNORE = `# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# testing
+/coverage
+/.vitest-attachments
+**/__screenshots__
+
+# next.js
 /.next/
-/build
 /out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# env files (can opt-in for committing if needed)
 .env*
-!.env.example
+
+# vercel
+.vercel
+
+# typescript
 *.tsbuildinfo
 next-env.d.ts
-.DS_Store
-/coverage
-.vercel
+!.env.example
 `;
 
-/** Writes a .gitignore into `target` if the copy from `templateDir` didn't bring one. */
-export function ensureGitignore(templateDir, target) {
+/** Writes a .gitignore into `target` if the copy from the template didn't bring one. */
+export function ensureGitignore(target) {
   const path = join(target, ".gitignore");
   if (existsSync(path)) return;
-  const source = join(templateDir, ".gitignore");
-  const content = existsSync(source) ? readFileSync(source, "utf8") : FALLBACK_GITIGNORE;
-  writeFileSync(path, content);
-}
-
-function value(argv, index, flag) {
-  const found = argv[index];
-  if (found === undefined || found.startsWith("-")) throw new Error(`${flag} needs a value`);
-  return found;
+  writeFileSync(path, FALLBACK_GITIGNORE);
 }
 
 export function parseArgs(argv) {
-  const args = {
-    target: undefined,
-    capabilities: [],
-    tests: true,
-    registry: DEFAULT_REGISTRY,
-    preset: DEFAULT_PRESET,
-    databaseUrl: undefined,
-    wireRegistry: false,
-    yes: false,
-  };
+  const { values, positionals } = parse({
+    args: argv,
+    allowPositionals: true,
+    options: {
+      "no-tests": { type: "boolean" },
+      yes: { type: "boolean", short: "y" },
+      registry: { type: "string" },
+      preset: { type: "string" },
+      "database-url": { type: "string" },
+      capabilities: { type: "string" },
+    },
+  });
 
-  for (let i = 0; i < argv.length; i++) {
-    const arg = argv[i];
-    if (arg === "--no-tests") args.tests = false;
-    else if (arg === "--yes" || arg === "-y") args.yes = true;
-    else if (arg === "--registry") args.registry = value(argv, ++i, arg);
-    else if (arg === "--preset") args.preset = value(argv, ++i, arg);
-    else if (arg === "--database-url") args.databaseUrl = value(argv, ++i, arg);
-    else if (arg === "--with-registry") args.wireRegistry = true;
-    else if (arg === "--capabilities") {
-      args.capabilities = value(argv, ++i, arg)
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean);
-    } else if (arg.startsWith("-")) throw new Error(`Unknown option: ${arg}`);
-    else if (args.target === undefined) args.target = arg;
-    else throw new Error(`Unexpected argument: ${arg}`);
-  }
+  if (positionals.length > 1) throw new Error(`Unexpected argument: ${positionals[1]}`);
 
-  for (const name of args.capabilities) {
+  const capabilities = (values.capabilities ?? "")
+    .split(",")
+    .map((name) => name.trim())
+    .filter(Boolean);
+  for (const name of capabilities) {
     if (!CAPABILITIES[name] && !BUNDLES[name]) throw new Error(`Unknown capability: ${name}`);
   }
 
-  return args;
+  return {
+    target: positionals[0],
+    capabilities,
+    tests: !values["no-tests"],
+    registry: values.registry ?? DEFAULT_REGISTRY,
+    preset: values.preset ?? DEFAULT_PRESET,
+    databaseUrl: values["database-url"],
+    yes: values.yes ?? false,
+  };
 }
 
 export function copyTemplate(from, to) {
@@ -193,26 +220,13 @@ async function main(argv) {
     throw new Error(`${target} already exists and is not empty.`);
   }
 
-  // Fail before copying anything: a half-made project is worse than no project.
-  // There is deliberately no prompt for this. Wiring the namespace needs a deployed
-  // registry URL, and until components are customised by hand it would buy nothing
-  // anyway: shadcn rewrites icon imports to match components.json on every `add`,
-  // so `@blueprint/dialog` and a plain `shadcn add dialog` produce identical files.
-  if (args.wireRegistry && !args.registry) {
-    throw new Error(
-      "--with-registry needs a registry URL. Pass --registry <url>, or drop\n" +
-        "--with-registry: the component registry is optional and capabilities\n" +
-        "do not need it.",
-    );
-  }
-
   const capabilities = resolveCapabilities(args.capabilities);
   const hasDb = capabilities.includes("db");
   const hasAuth = capabilities.includes("auth");
 
   process.stdout.write(`\nCreating ${name} in ${target}\n`);
   copyTemplate(join(repoRoot, "template"), target);
-  ensureGitignore(join(repoRoot, "template"), target);
+  ensureGitignore(target);
 
   const packagePath = join(target, "package.json");
   const pkg = JSON.parse(readFileSync(packagePath, "utf8"));
@@ -240,10 +254,6 @@ async function main(argv) {
       registry: args.registry,
       source: join(repoRoot, "site"),
     });
-  }
-
-  if (args.wireRegistry) {
-    run("pnpm", ["exec", "shadcn", "registry", "add", `@blueprint=${args.registry}/r/{name}.json`], target);
   }
 
   writeEnv(target, {
