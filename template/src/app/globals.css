@@ -126,5 +126,9 @@
   }
   html {
     @apply font-sans;
+    /* Everything in the type and spacing scale is rem based, so this one knob
+       scales the whole UI. A percentage, not px, so a reader's own browser
+       font size still applies on top. */
+    font-size: 112.5%;
   }
 }
