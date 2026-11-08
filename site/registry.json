@@ -291,6 +291,11 @@
           "path": "registry/cms/app/api/route.ts",
           "type": "registry:file",
           "target": "src/app/(payload)/api/[...slug]/route.ts"
+        },
+        {
+          "path": "registry/cms/app/slug-page.tsx",
+          "type": "registry:file",
+          "target": "src/app/(app)/[slug]/page.tsx"
         }
       ]
     },
