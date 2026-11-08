@@ -36,7 +36,7 @@ npx github:liamthura/blueprint my-app --capabilities saas --no-tests --yes
 
 | Flag | |
 |---|---|
-| `--capabilities <list>` | `db`, `auth`, `ai`, `tables`, or the `saas` bundle |
+| `--capabilities <list>` | `db`, `auth`, `ai`, `tables`, `cms`, or the `saas` / `content` bundles |
 | `--no-tests` | drop the Vitest harness |
 | `--registry <url>` | pull capabilities from a deployed registry instead of the local checkout |
 | `--database-url <url>` | Postgres URL to write into `.env`; defaults to the local Docker one |
@@ -48,7 +48,7 @@ npx github:liamthura/blueprint my-app --capabilities saas --no-tests --yes
 The template already ships with preset **`b7lltUjfaE`** applied, so accepting the
 default at setup changes nothing. Passing a different code re-themes the project:
 `shadcn apply` handles the colours and components, and the CLI then repoints
-`src/app/layout.tsx`'s fonts, swaps the icon dependency so the project never carries
+`src/app/(app)/layout.tsx`'s fonts, swaps the icon dependency so the project never carries
 two icon libraries, and reformats what shadcn rewrote.
 
 A named style (`nova`, `vega`, `mira`, ...) works too, but only generated codes carry
@@ -164,7 +164,7 @@ pnpm dlx shadcn@latest apply b7lltUjfaE
 | Path | What it is |
 |---|---|
 | `template/` | What a new project is made of. The setup CLI copies this. |
-| `site/registry/` | Capability source files — the db, auth, ai and tables features. |
+| `site/registry/` | Capability source files — the db, auth, ai, tables and cms features. |
 | `site/registry.json` | The catalogue: every component and capability, and where its files land in a project. |
 | `site/src/components/ui/` | The shared components. Customise them here, not in each project. |
 | `site/src/app/page.tsx` | The gallery — a browsable list of the above. |

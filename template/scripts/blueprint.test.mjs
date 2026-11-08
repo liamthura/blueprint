@@ -3,6 +3,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
+import { fileURLToPath } from "node:url";
 import {
   appendEnvExample,
   applyPreset,
@@ -13,6 +14,7 @@ import {
   DEFAULT_PRESET,
   DEFAULT_REGISTRY,
   ICON_PACKAGES,
+  materialiseItem,
   mergeScripts,
   PRESET_FONTS,
   parseAddArgs,
@@ -72,6 +74,22 @@ test("every capability declares needs that exist", () => {
   for (const [name, cap] of Object.entries(CAPABILITIES)) {
     for (const need of cap.needs) {
       assert.ok(CAPABILITIES[need], `${name} needs unknown capability ${need}`);
+    }
+  }
+});
+
+test("every capability in CAPABILITIES can be materialised from site/registry.json", () => {
+  const siteRoot = fileURLToPath(new URL("../../site", import.meta.url));
+  for (const name of Object.keys(CAPABILITIES)) {
+    const outPath = materialiseItem(siteRoot, name);
+    const inlined = JSON.parse(readFileSync(outPath, "utf8"));
+    assert.equal(inlined.name, name);
+    assert.ok(inlined.files.length > 0, `${name} has files`);
+    for (const file of inlined.files) {
+      assert.ok(
+        typeof file.content === "string" && file.content.length > 0,
+        `${file.path} has content`,
+      );
     }
   }
 });

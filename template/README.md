@@ -25,7 +25,7 @@ tracking — the app runs without it.
 
 ## Fonts
 
-`src/app/layout.tsx` declares three font slots — `--font-app-sans`, `--font-app-mono`
+`src/app/(app)/layout.tsx` declares three font slots — `--font-app-sans`, `--font-app-mono`
 and `--font-app-heading` — and `globals.css` maps Tailwind's `font-sans`, `font-mono`
 and `font-heading` onto them. The variable names are deliberately font-neutral, so
 changing a font means changing one `next/font/google` import and nothing else.
@@ -33,10 +33,10 @@ changing a font means changing one `next/font/google` import and nothing else.
 ## Adding capabilities
 
 ```bash
-pnpm blueprint add <db|auth|ai|tables|tests|saas>
+pnpm blueprint add <db|auth|ai|tables|cms|tests|saas|content>
 ```
 
-`auth` pulls `db` with it. The script never passes `--overwrite`, so by the
+`auth` and `cms` pull `db` with them. The script never passes `--overwrite`, so by the
 time you have customised `src/lib/auth.ts`, shadcn prompts per file and your
 edits survive.
 
@@ -44,7 +44,7 @@ The registry it pulls from is the `blueprint.registry` field in this
 project's `package.json`. Change that one field to point somewhere else.
 
 `tables` ships a `QueryProvider` but nothing mounts it for you — wrap your
-tree with it in `src/app/layout.tsx` before any component calls `useQuery`.
+tree with it in `src/app/(app)/layout.tsx` before any component calls `useQuery`.
 
 ## Updating dependencies
 

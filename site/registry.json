@@ -8,11 +8,7 @@
       "type": "registry:ui",
       "title": "Button",
       "description": "Button with the blueprint defaults.",
-      "dependencies": [
-        "class-variance-authority",
-        "cn",
-        "radix-ui"
-      ],
+      "dependencies": ["class-variance-authority", "cn", "radix-ui"],
       "files": [
         {
           "path": "src/components/ui/button.tsx",
@@ -25,14 +21,8 @@
       "type": "registry:ui",
       "title": "Dialog",
       "description": "Dialog with the blueprint defaults.",
-      "registryDependencies": [
-        "button"
-      ],
-      "dependencies": [
-        "cn",
-        "radix-ui",
-        "@phosphor-icons/react"
-      ],
+      "registryDependencies": ["button"],
+      "dependencies": ["cn", "radix-ui", "@phosphor-icons/react"],
       "files": [
         {
           "path": "src/components/ui/dialog.tsx",
@@ -45,11 +35,7 @@
       "type": "registry:ui",
       "title": "Dropdown menu",
       "description": "Dropdown menu with the blueprint defaults.",
-      "dependencies": [
-        "cn",
-        "radix-ui",
-        "@phosphor-icons/react"
-      ],
+      "dependencies": ["cn", "radix-ui", "@phosphor-icons/react"],
       "files": [
         {
           "path": "src/components/ui/dropdown-menu.tsx",
@@ -62,11 +48,7 @@
       "type": "registry:ui",
       "title": "Sonner",
       "description": "Toast wrapper with the blueprint defaults.",
-      "dependencies": [
-        "sonner",
-        "next-themes",
-        "@phosphor-icons/react"
-      ],
+      "dependencies": ["sonner", "next-themes", "@phosphor-icons/react"],
       "files": [
         {
           "path": "src/components/ui/sonner.tsx",
@@ -85,10 +67,7 @@
         "@t3-oss/env-nextjs@0.13.11",
         "zod@4.6.2"
       ],
-      "devDependencies": [
-        "drizzle-kit@0.31.10",
-        "@types/pg@8.23.1"
-      ],
+      "devDependencies": ["drizzle-kit@0.31.10", "@types/pg@8.23.1"],
       "files": [
         {
           "path": "registry/db/index.ts",
@@ -122,14 +101,8 @@
       "type": "registry:lib",
       "title": "Authentication",
       "description": "better-auth with email and password, on the db capability's Drizzle instance.",
-      "dependencies": [
-        "better-auth@1.7.4",
-        "@t3-oss/env-nextjs@0.13.11",
-        "zod@4.6.2"
-      ],
-      "devDependencies": [
-        "@playwright/test@1.63.0"
-      ],
+      "dependencies": ["better-auth@1.7.4", "@t3-oss/env-nextjs@0.13.11", "zod@4.6.2"],
+      "devDependencies": ["@playwright/test@1.63.0"],
       "files": [
         {
           "path": "registry/auth/auth.ts",
@@ -218,10 +191,7 @@
       "type": "registry:lib",
       "title": "Data tables",
       "description": "TanStack Table with sorting, plus a TanStack Query provider for client-side fetching. Mount QueryProvider in src/app/(app)/layout.tsx before using useQuery.",
-      "dependencies": [
-        "@tanstack/react-table@9.2.4",
-        "@tanstack/react-query@5.102.8"
-      ],
+      "dependencies": ["@tanstack/react-table@9.2.4", "@tanstack/react-query@5.102.8"],
       "files": [
         {
           "path": "registry/tables/query-provider.tsx",
@@ -232,6 +202,95 @@
           "path": "registry/tables/data-table.tsx",
           "type": "registry:component",
           "target": "src/components/data-table.tsx"
+        }
+      ]
+    },
+    {
+      "name": "cms",
+      "type": "registry:lib",
+      "title": "Headless CMS",
+      "description": "Payload CMS 3 in the Next.js App Router on the db capability's Postgres instance, with Users, Media, Posts, and block-based Pages.",
+      "dependencies": [
+        "payload@3.93.0",
+        "@payloadcms/next@3.93.0",
+        "@payloadcms/db-postgres@3.93.0",
+        "@payloadcms/richtext-lexical@3.93.0",
+        "@payloadcms/ui@3.93.0",
+        "graphql@16.13.0",
+        "sharp@0.34.5",
+        "@t3-oss/env-nextjs@0.13.11",
+        "zod@4.6.2"
+      ],
+      "files": [
+        {
+          "path": "registry/cms/cms-env.ts",
+          "type": "registry:lib",
+          "target": "src/lib/cms-env.ts"
+        },
+        {
+          "path": "registry/cms/payload.config.ts",
+          "type": "registry:file",
+          "target": "src/payload.config.ts"
+        },
+        {
+          "path": "registry/cms/collections/Users.ts",
+          "type": "registry:file",
+          "target": "src/collections/Users.ts"
+        },
+        {
+          "path": "registry/cms/collections/Media.ts",
+          "type": "registry:file",
+          "target": "src/collections/Media.ts"
+        },
+        {
+          "path": "registry/cms/collections/Posts.ts",
+          "type": "registry:file",
+          "target": "src/collections/Posts.ts"
+        },
+        {
+          "path": "registry/cms/collections/Pages.ts",
+          "type": "registry:file",
+          "target": "src/collections/Pages.ts"
+        },
+        {
+          "path": "registry/cms/blocks/index.ts",
+          "type": "registry:file",
+          "target": "src/blocks/index.ts"
+        },
+        {
+          "path": "registry/cms/cms.ts",
+          "type": "registry:lib",
+          "target": "src/lib/cms.ts"
+        },
+        {
+          "path": "registry/cms/app/layout.tsx",
+          "type": "registry:file",
+          "target": "src/app/(payload)/layout.tsx"
+        },
+        {
+          "path": "registry/cms/app/custom.scss",
+          "type": "registry:file",
+          "target": "src/app/(payload)/custom.scss"
+        },
+        {
+          "path": "registry/cms/app/admin/importMap.js",
+          "type": "registry:file",
+          "target": "src/app/(payload)/admin/importMap.js"
+        },
+        {
+          "path": "registry/cms/app/admin/page.tsx",
+          "type": "registry:file",
+          "target": "src/app/(payload)/admin/[[...segments]]/page.tsx"
+        },
+        {
+          "path": "registry/cms/app/admin/not-found.tsx",
+          "type": "registry:file",
+          "target": "src/app/(payload)/admin/[[...segments]]/not-found.tsx"
+        },
+        {
+          "path": "registry/cms/app/api/route.ts",
+          "type": "registry:file",
+          "target": "src/app/(payload)/api/[...slug]/route.ts"
         }
       ]
     },
