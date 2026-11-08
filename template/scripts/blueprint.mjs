@@ -138,10 +138,22 @@ export const CAPABILITIES = {
     scripts: { test: "vitest run" },
     env: [],
   },
+  cms: {
+    title: "Payload CMS with editorial & page blocks",
+    needs: ["db"],
+    scripts: {
+      "cms:types": "payload generate:types",
+      "cms:importmap": "payload generate:importmap",
+      "cms:migrate:create": "payload migrate:create",
+      "cms:migrate": "payload migrate",
+    },
+    env: ["PAYLOAD_SECRET="],
+  },
 };
 
 export const BUNDLES = {
   saas: ["db", "auth", "tables"],
+  content: ["db", "cms"],
 };
 
 /** Removed by stripTests, restored by the `tests` capability. */
@@ -291,6 +303,62 @@ export function appendEnvExample(dir, names) {
   return added;
 }
 
+const CMS_BIOME_IGNORES = ["!src/app/(payload)", "!src/payload-types.ts", "!src/migrations"];
+
+/**
+ * Patches tsconfig.json, next.config.ts, and biome.json for Payload CMS.
+ * Every step checks whether its change is already present, so running
+ * `blueprint add cms` a second time is a no-op.
+ */
+export function wireCmsConfig(dir) {
+  let tsconfigChanged = false;
+  const tsconfigPath = join(dir, "tsconfig.json");
+  if (existsSync(tsconfigPath)) {
+    const tsconfig = JSON.parse(readFileSync(tsconfigPath, "utf8"));
+    tsconfig.compilerOptions ??= {};
+    tsconfig.compilerOptions.paths ??= {};
+    if (!tsconfig.compilerOptions.paths["@payload-config"]) {
+      tsconfig.compilerOptions.paths["@payload-config"] = ["./src/payload.config.ts"];
+      writeFileSync(tsconfigPath, `${JSON.stringify(tsconfig, null, 2)}\n`);
+      tsconfigChanged = true;
+    }
+  }
+
+  let nextConfigChanged = false;
+  const nextConfigPath = join(dir, "next.config.ts");
+  if (existsSync(nextConfigPath)) {
+    let source = readFileSync(nextConfigPath, "utf8");
+    if (!source.includes("withPayload")) {
+      source = `import { withPayload } from "@payloadcms/next/withPayload";\n${source}`;
+      source = source.replace(
+        /export default ([\s\S]*);\s*$/,
+        "export default withPayload(\n  $1,\n);\n",
+      );
+      writeFileSync(nextConfigPath, source);
+      nextConfigChanged = true;
+    }
+  }
+
+  let biomeChanged = false;
+  const biomePath = join(dir, "biome.json");
+  if (existsSync(biomePath)) {
+    const biome = JSON.parse(readFileSync(biomePath, "utf8"));
+    biome.files ??= {};
+    biome.files.includes ??= ["**"];
+    for (const entry of CMS_BIOME_IGNORES) {
+      if (!biome.files.includes.includes(entry)) {
+        biome.files.includes.push(entry);
+        biomeChanged = true;
+      }
+    }
+    if (biomeChanged) {
+      writeFileSync(biomePath, `${JSON.stringify(biome, null, 2)}\n`);
+    }
+  }
+
+  return { tsconfig: tsconfigChanged, nextConfig: nextConfigChanged, biome: biomeChanged };
+}
+
 /**
  * Fetches each capability from the registry and wires up what the registry
  * format cannot carry. Never passes --overwrite: by the time a second
@@ -314,6 +382,7 @@ export function addCapabilities(dir, names, { registry = registryUrl(dir), sourc
   });
   mergeScripts(dir, resolved);
   appendEnvExample(dir, resolved);
+  if (resolved.includes("cms")) wireCmsConfig(dir);
   return resolved;
 }
 

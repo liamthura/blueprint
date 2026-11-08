@@ -26,6 +26,7 @@ import {
   TEST_DEPS,
   UPDATE_CHECKS,
   updatePlan,
+  wireCmsConfig,
 } from "./blueprint.mjs";
 
 function fixture({ scripts = {}, blueprint } = {}) {
@@ -55,6 +56,12 @@ test("resolveCapabilities puts dependencies first and deduplicates", () => {
 test("resolveCapabilities expands the saas bundle", () => {
   assert.deepEqual(resolveCapabilities(["saas"]), ["db", "auth", "tables"]);
   assert.deepEqual(BUNDLES.saas, ["db", "auth", "tables"]);
+});
+
+test("resolveCapabilities expands cms needs and the content bundle", () => {
+  assert.deepEqual(resolveCapabilities(["cms"]), ["db", "cms"]);
+  assert.deepEqual(resolveCapabilities(["content"]), ["db", "cms"]);
+  assert.deepEqual(BUNDLES.content, ["db", "cms"]);
 });
 
 test("resolveCapabilities rejects an unknown name", () => {
@@ -108,6 +115,51 @@ test("appendEnvExample labels each capability's block with a comment", () => {
   appendEnvExample(dir, ["db"]);
   const text = readFileSync(join(dir, ".env.example"), "utf8");
   assert.match(text, /^# db\nDATABASE_URL=/m);
+});
+
+test("wireCmsConfig patches tsconfig.json, next.config.ts, and biome.json idempotently", () => {
+  const dir = fixture();
+  writeFileSync(
+    join(dir, "tsconfig.json"),
+    `${JSON.stringify({ compilerOptions: { paths: { "@/*": ["./src/*"] } } }, null, 2)}\n`,
+  );
+  writeFileSync(
+    join(dir, "next.config.ts"),
+    `import "./src/env";\nimport { withSentryConfig } from "@sentry/nextjs/config";\nimport type { NextConfig } from "next";\n\nconst nextConfig: NextConfig = {\n  output: "standalone",\n};\n\nexport default withSentryConfig(nextConfig, {\n  silent: true,\n  telemetry: false,\n});\n`,
+  );
+  writeFileSync(
+    join(dir, "biome.json"),
+    `${JSON.stringify({ files: { includes: ["**", "!.next", "!drizzle"] } }, null, 2)}\n`,
+  );
+
+  const first = wireCmsConfig(dir);
+  assert.deepEqual(first, { tsconfig: true, nextConfig: true, biome: true });
+
+  const tsconfig = JSON.parse(readFileSync(join(dir, "tsconfig.json"), "utf8"));
+  assert.deepEqual(tsconfig.compilerOptions.paths["@payload-config"], ["./src/payload.config.ts"]);
+
+  const nextConfig = readFileSync(join(dir, "next.config.ts"), "utf8");
+  assert.match(nextConfig, /import \{ withPayload \} from "@payloadcms\/next\/withPayload";/);
+  assert.match(nextConfig, /export default withPayload\(\s*withSentryConfig\(/);
+
+  const biome = JSON.parse(readFileSync(join(dir, "biome.json"), "utf8"));
+  assert.ok(biome.files.includes.includes("!src/app/(payload)"));
+  assert.ok(biome.files.includes.includes("!src/payload-types.ts"));
+  assert.ok(biome.files.includes.includes("!src/migrations"));
+
+  // Second call must be a complete no-op
+  const second = wireCmsConfig(dir);
+  assert.deepEqual(second, { tsconfig: false, nextConfig: false, biome: false });
+  assert.equal(
+    readFileSync(join(dir, "next.config.ts"), "utf8").match(/withPayload/g).length,
+    3,
+    "import specifier + module path + single wrapper call only",
+  );
+});
+
+test("wireCmsConfig tolerates missing config files without throwing", () => {
+  const dir = mkdtempSync(join(tmpdir(), "blueprint-empty-"));
+  assert.deepEqual(wireCmsConfig(dir), { tsconfig: false, nextConfig: false, biome: false });
 });
 
 test("registryUrl prefers the project's own setting", () => {

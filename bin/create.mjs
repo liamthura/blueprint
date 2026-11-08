@@ -173,11 +173,13 @@ async function askMissing(args) {
     if (args.capabilities.length === 0) {
       const choice = await prompt(
         rl,
-        "What are you building? [1] landing page  [2] saas (db + auth + tables)  [3] ai —",
+        "What are you building? [1] landing page  [2] saas (db + auth + tables)  [3] content (db + cms)  [4] ai —",
         "1",
       );
       if (choice === "2" || choice === "saas") args.capabilities = ["saas"];
-      else if (choice === "3" || choice === "ai") args.capabilities = ["ai"];
+      else if (choice === "3" || choice === "content" || choice === "cms")
+        args.capabilities = ["content"];
+      else if (choice === "4" || choice === "ai") args.capabilities = ["ai"];
     }
 
     if (args.preset === DEFAULT_PRESET) {
@@ -223,6 +225,7 @@ async function main(argv) {
   const capabilities = resolveCapabilities(args.capabilities);
   const hasDb = capabilities.includes("db");
   const hasAuth = capabilities.includes("auth");
+  const hasCms = capabilities.includes("cms");
 
   process.stdout.write(`\nCreating ${name} in ${target}\n`);
   copyTemplate(join(repoRoot, "template"), target);
@@ -258,10 +261,10 @@ async function main(argv) {
 
   writeEnv(target, {
     DATABASE_URL: args.databaseUrl,
-    // Generated per project rather than left blank: better-auth requires 32+ chars,
-    // so an empty value makes `pnpm build` fail on the very first run. A secret the
-    // user never has to think about beats a secret they have to be told to create.
+    // Generated per project rather than left blank: better-auth and Payload require
+    // a secret, so an empty value makes `pnpm build` fail on the very first run.
     BETTER_AUTH_SECRET: hasAuth ? randomBytes(32).toString("base64url") : undefined,
+    PAYLOAD_SECRET: hasCms ? randomBytes(32).toString("base64url") : undefined,
   });
 
   try {
