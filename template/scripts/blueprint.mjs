@@ -350,13 +350,26 @@ export function currentIconLibrary(dir) {
 }
 
 /**
+ * Locates the frontend root layout, preferring the `(app)` route group used so
+ * Payload's `(payload)` group can sit beside it without nesting `<html>` tags, and
+ * falling back to `src/app/layout.tsx` for flat projects.
+ */
+export function findLayoutPath(dir) {
+  const grouped = join(dir, "src", "app", "(app)", "layout.tsx");
+  if (existsSync(grouped)) return grouped;
+  const flat = join(dir, "src", "app", "layout.tsx");
+  if (existsSync(flat)) return flat;
+  return null;
+}
+
+/**
  * Points layout.tsx's three font slots at different next/font/google exports.
  * Only the export names change — the CSS variable names are font-neutral, so
  * globals.css and every consumer of `font-sans` stay untouched.
  */
 export function rewriteFonts(dir, { sans, heading }) {
-  const path = join(dir, "src", "app", "layout.tsx");
-  if (!existsSync(path)) return [];
+  const path = findLayoutPath(dir);
+  if (!path) return [];
 
   const source = readFileSync(path, "utf8");
   const current = {
@@ -438,7 +451,7 @@ export function applyPreset(dir, code, { log = (line) => process.stdout.write(li
   if (code === DEFAULT_PRESET) return { applied: false, reason: "already the default preset" };
 
   const cssPath = join(dir, "src", "app", "globals.css");
-  const layoutPath = join(dir, "src", "app", "layout.tsx");
+  const layoutPath = findLayoutPath(dir) ?? join(dir, "src", "app", "(app)", "layout.tsx");
   const cssBefore = existsSync(cssPath) ? readFileSync(cssPath, "utf8") : null;
   const layoutBefore = existsSync(layoutPath) ? readFileSync(layoutPath, "utf8") : null;
 

@@ -164,12 +164,12 @@
         {
           "path": "registry/auth/sign-in-page.tsx",
           "type": "registry:file",
-          "target": "src/app/sign-in/page.tsx"
+          "target": "src/app/(app)/sign-in/page.tsx"
         },
         {
           "path": "registry/auth/sign-up-page.tsx",
           "type": "registry:file",
-          "target": "src/app/sign-up/page.tsx"
+          "target": "src/app/(app)/sign-up/page.tsx"
         },
         {
           "path": "registry/auth/playwright.config.ts",
@@ -217,7 +217,7 @@
       "name": "tables",
       "type": "registry:lib",
       "title": "Data tables",
-      "description": "TanStack Table with sorting, plus a TanStack Query provider for client-side fetching. Mount QueryProvider in src/app/layout.tsx before using useQuery.",
+      "description": "TanStack Table with sorting, plus a TanStack Query provider for client-side fetching. Mount QueryProvider in src/app/(app)/layout.tsx before using useQuery.",
       "dependencies": [
         "@tanstack/react-table@9.2.4",
         "@tanstack/react-query@5.102.8"

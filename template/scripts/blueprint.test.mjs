@@ -176,6 +176,23 @@ function appWithLayout() {
   return dir;
 }
 
+function appWithGroupedLayout() {
+  const dir = fixture();
+  mkdirSync(join(dir, "src", "app", "(app)"), { recursive: true });
+  writeFileSync(join(dir, "src", "app", "(app)", "layout.tsx"), LAYOUT);
+  return dir;
+}
+
+test("rewriteFonts supports layout.tsx inside the (app) route group", () => {
+  const dir = appWithGroupedLayout();
+  const changes = rewriteFonts(dir, { sans: "Inter", heading: "Playfair_Display" });
+  const layout = readFileSync(join(dir, "src", "app", "(app)", "layout.tsx"), "utf8");
+
+  assert.match(layout, /const fontSans = Inter\(/);
+  assert.match(layout, /const fontHeading = Playfair_Display\(/);
+  assert.deepEqual(changes, ["sans Geist -> Inter", "heading Instrument_Sans -> Playfair_Display"]);
+});
+
 test("every preset font maps to a next/font/google export", () => {
   // The map is not a mechanical transform: these three break split-capitalise-join.
   assert.equal(PRESET_FONTS["dm-sans"], "DM_Sans");
